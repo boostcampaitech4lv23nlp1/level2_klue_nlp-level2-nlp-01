@@ -1,9 +1,8 @@
 import argparse
+import re
 
 import pandas as pd
-
 from tqdm.auto import tqdm
-
 import transformers
 import torch
 import torchmetrics
@@ -63,4 +62,5 @@ if __name__ == '__main__':
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
     
-    torch.save(model, f'./{args.model_name}.pt')
+    model_name = re.sub(r'[/]', '-', args.model_name)
+    torch.save(model, f'{model_name}.pt')

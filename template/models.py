@@ -1,10 +1,12 @@
 import argparse
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 import transformers
 import torch
+import torch.nn.functional as F
 import torchmetrics
 import pytorch_lightning as pl
 
@@ -104,11 +106,14 @@ class Model(pl.LightningModule):
         return
 
     def predict_step(self, batch, batch_idx):
-        x = batch
+        x, _ = batch
         logits = self(x)
 
-        preds = logits.cpu().detach().numpy().argmax(-1)
-        return preds
+        probs = str(F.softmax(logits, dim=-1).detach().cpu().numpy().reshape(-1))
+        logits = logits.detach().cpu().numpy()
+        preds = logits.argmax(-1).tolist()
+
+        return preds, probs
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
