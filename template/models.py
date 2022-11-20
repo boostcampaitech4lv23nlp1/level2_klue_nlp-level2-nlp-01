@@ -1,19 +1,17 @@
 import argparse
 from copy import deepcopy
 
+import torch
 import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
-import transformers
-import torch
-import torch.nn.functional as F
 import torchmetrics
+import transformers
+from tqdm.auto import tqdm
+import torch.nn.functional as F
 import pytorch_lightning as pl
-
 
 import metrics
 from dataloader import *
-
 
 class Model(pl.LightningModule):
     def __init__(self, model_name, lr):

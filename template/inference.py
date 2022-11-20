@@ -2,12 +2,11 @@ import re
 import os
 import argparse
 
+import torch
 import pandas as pd
-
 from tqdm.auto import tqdm
 
 import transformers
-import torch
 import torchmetrics
 import pytorch_lightning as pl
 

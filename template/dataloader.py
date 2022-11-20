@@ -1,19 +1,16 @@
+import os
 import argparse
+from typing import *
 
-import pandas as pd
-
-from tqdm.auto import tqdm
-
-import transformers
 import torch
 import torchmetrics
+import pandas as pd
+import transformers
+from tqdm.auto import tqdm
 import pytorch_lightning as pl
-
-import os
 import pickle as pkl
-import metrics
 
-from typing import *
+import metrics
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, inputs: List[dict], labels: List[int]):

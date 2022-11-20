@@ -1,18 +1,19 @@
-import argparse
 import re
+import argparse
 
-import pandas as pd
-from tqdm.auto import tqdm
-import transformers
 import torch
+import wandb
+import transformers
 import torchmetrics
+import pandas as pd
+import pickle as pkl
+from tqdm.auto import tqdm
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
 from dataloader import *
 from models import *
-import pickle as pkl
-import wandb
+
 
 
 if __name__ == '__main__':
@@ -63,4 +64,5 @@ if __name__ == '__main__':
     trainer.test(model=model, datamodule=dataloader)
     
     model_name = re.sub(r'[/]', '-', args.model_name)
+
     torch.save(model, f'{model_name}.pt')
