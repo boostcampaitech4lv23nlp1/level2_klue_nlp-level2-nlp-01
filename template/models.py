@@ -30,7 +30,7 @@ class Model(pl.LightningModule):
             pretrained_model_name_or_path=self.model_name,
         )
 
-        self.classification = torch.nn.Linear(768, 30)
+        self.classification = torch.nn.Linear(1024, 30)
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, x: dict):
