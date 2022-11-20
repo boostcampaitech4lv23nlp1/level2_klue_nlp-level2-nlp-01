@@ -50,6 +50,14 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
 
+    def num_to_label(self, label):
+        origin_label = []
+        with open('dict_num_to_label.pkl', 'rb') as f:
+            dict_num_to_label = pkl.load(f)
+        for v in label:
+            origin_label.append(dict_num_to_label[v])
+        return origin_label
+
     def label_to_num(self, label: pd.Series) -> List[int]:
         num_label = []
         with open('dict_label_to_num.pkl', 'rb') as f:
@@ -82,17 +90,28 @@ class Dataloader(pl.LightningDataModule):
 
             subject_entity.append(i)
             object_entity.append(j)
-
-        preprocessed_df = pd.DataFrame({
-            'id': df['id'], 
-            'sentence': df['sentence'],
-            'subject_entity': subject_entity,
-            'object_entity': object_entity,
-            'label': df['label'],
-        })
         
-        inputs = self.tokenizing(preprocessed_df)
-        targets = self.label_to_num(preprocessed_df['label'])
+        try:
+            preprocessed_df = pd.DataFrame({
+                'id': df['id'], 
+                'sentence': df['sentence'],
+                'subject_entity': subject_entity,
+                'object_entity': object_entity,
+                'label': df['label'],
+            })
+            
+            inputs = self.tokenizing(preprocessed_df)
+            targets = self.label_to_num(preprocessed_df['label'])
+        except:
+            preprocessed_df = pd.DataFrame({
+                'id': df['id'], 
+                'sentence': df['sentence'],
+                'subject_entity': subject_entity,
+                'object_entity': object_entity,
+            })
+            inputs = self.tokenizing(preprocessed_df)
+            targets = []
+
         return inputs, targets
 
     def setup(self, stage='fit'):
@@ -113,6 +132,7 @@ class Dataloader(pl.LightningDataModule):
             test_inputs, test_targets = self.preprocessing(test_data)
             self.test_dataset = Dataset(test_inputs, test_targets)
 
+            predict_data.drop(columns=['label'], inplace=True)
             predict_inputs, predict_targets = self.preprocessing(predict_data)
             self.predict_dataset = Dataset(predict_inputs, [])
 
