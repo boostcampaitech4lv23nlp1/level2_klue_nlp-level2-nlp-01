@@ -26,7 +26,7 @@ class Dataset(torch.utils.data.Dataset):
         return X, y
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
     def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, shuffle):
