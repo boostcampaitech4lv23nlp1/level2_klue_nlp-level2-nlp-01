@@ -1,4 +1,5 @@
 import os
+import re
 import argparse
 from typing import *
 
@@ -48,9 +49,13 @@ class Dataloader(pl.LightningDataModule):
         self.shuffle = shuffle
 
         self.using_columns = ['subject_entity', 'object_entity']
+        self.entity_token = ['[ENTITY]', '[/ENTITY]']
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
+        self.tokenizer.add_special_tokens({
+            'additional_special_tokens': ['[ENTITY]', '[/ENTITY]']
+        })
 
     def num_to_label(self, label):
         origin_label = []
@@ -69,10 +74,16 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
+    def add_entity_token(self, sentence, subject_entity, object_entity):
+        for entity in [subject_entity, object_entity]:
+            sentence = sentence.replace(entity, self.entity_tokens[0] + entity + self.entity_tokens[1])
+        return sentence
+
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
+            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
+            concat_entity = self.add_entity_token(item['sentence'], item['subject_entity'], item['object_entity'])
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
