@@ -52,7 +52,7 @@ if __name__ == '__main__':
     results = trainer.predict(model=model, datamodule=dataloader)
     preds_all, probs_all = [], []
     for preds, probs in results:
-        preds_all.append(preds[0]); probs_all.append(probs)
+        preds_all.append(preds[0]); probs_all.append(str(list(probs)))
 
     preds_all = dataloader.num_to_label(preds_all)
 
@@ -62,4 +62,4 @@ if __name__ == '__main__':
         'probs': probs_all
     })
 
-    output.to_csv('sample_submission.csv', index=False)
+    output.to_csv('output.csv', index=False)
