@@ -48,7 +48,7 @@ class Dataloader(pl.LightningDataModule):
         self.predict_dataset = None
         self.shuffle = shuffle
 
-        self.using_columns = ['subject_entity', 'object_entity']
+        self.using_columns = ['subject_entity', 'object_entity', 'sentence']
         self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
@@ -82,12 +82,13 @@ class Dataloader(pl.LightningDataModule):
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
-            concat_entity = self.add_entity_token(item['sentence'], item['subject_entity'], item['object_entity'])
+            concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
+            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns[:-1]])
+            # concat_entity += '[SEP]' + self.add_entity_token(item['sentence'], item['subject_entity'], item['object_entity'])
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
-                padding='max_length', 
+                padding='max_length',
                 truncation=True,
                 max_length=256
             )
