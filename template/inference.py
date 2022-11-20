@@ -18,8 +18,8 @@ if __name__ == '__main__':
     # 터미널 실행 예시 : python3 run.py --batch_size=64 ...
     # 실행 시 '--batch_size=64' 같은 인자를 입력하지 않으면 default 값이 기본으로 실행됩니다
     parser = argparse.ArgumentParser()
-    parser.add_argument('--tokenizer_name', default='klue/bert-base', type=str)
-    parser.add_argument('--model_name', default='klue/bert-base', type=str)
+    parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
+    parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--max_epoch', default=1, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     for preds, probs in results:
         preds_all.append(preds[0]); probs_all.append(str(list(probs)))
 
-    preds_all = dataloader.num_to_label(preds_all)
+    preds_all = dataloader.num_to_label(preds_all) 
 
     output = pd.DataFrame({
         'id': [idx for idx in range(len(preds_all))],
