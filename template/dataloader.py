@@ -49,7 +49,7 @@ class Dataloader(pl.LightningDataModule):
         self.shuffle = shuffle
 
         self.using_columns = ['subject_entity', 'object_entity']
-        self.entity_token = ['[ENTITY]', '[/ENTITY]']
+        self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
