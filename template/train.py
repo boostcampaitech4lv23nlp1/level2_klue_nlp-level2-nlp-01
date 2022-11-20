@@ -18,8 +18,8 @@ from models import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--tokenizer_name', default='klue/bert-base', type=str)
-    parser.add_argument('--model_name', default='klue/bert-base', type=str)
+    parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
+    parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--max_epoch', default=20, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
@@ -29,14 +29,14 @@ if __name__ == '__main__':
     parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
-    # try:
-    #     wandb.login(key='4c0a01eaa2bd589d64c5297c5bc806182d126350')
-    # except:
-    #     anony = "must"
-    #     print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
+    try:
+        wandb.login(key='4c0a01eaa2bd589d64c5297c5bc806182d126350')
+    except:
+        anony = "must"
+        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    # wandb.init(project="level2", name= f"{args.model_name}")
-    # wandb_logger = WandbLogger('level2')    
+    wandb.init(project="level2", name= f"{args.model_name}")
+    wandb_logger = WandbLogger('level2')    
 
     dataloader = Dataloader(
         args.tokenizer_name,
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         max_epochs=args.max_epoch, 
         log_every_n_steps=1,
         precision=16,
-        # logger=wandb_logger
+        logger=wandb_logger
     )
 
     # Train part

@@ -107,7 +107,7 @@ class Model(pl.LightningModule):
         x, _ = batch
         logits = self(x)
 
-        probs = str(F.softmax(logits, dim=-1).detach().cpu().numpy().reshape(-1))
+        probs = F.softmax(logits, dim=-1).detach().cpu().numpy().reshape(-1)
         logits = logits.detach().cpu().numpy()
         preds = logits.argmax(-1).tolist()
 
