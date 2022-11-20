@@ -22,7 +22,12 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx) -> dict:
         X = {key: torch.tensor(value) for key, value in self.inputs[idx].items()}
-        y = torch.tensor(self.labels[idx])
+
+        # prediction은 label이 없음
+        try:
+            y = torch.tensor(self.labels[idx])
+        except:
+            y = torch.tensor(-1)
         return X, y
 
     def __len__(self):
