@@ -1,10 +1,6 @@
-import os
-import re
-import argparse
 from typing import *
 
 import torch
-import torchmetrics
 import pandas as pd
 import transformers
 from tqdm.auto import tqdm
@@ -47,13 +43,14 @@ class Dataloader(pl.LightningDataModule):
         self.predict_dataset = None
         self.shuffle = shuffle
 
-        self.using_columns = ['subject_entity', 'object_entity', 'sentence']
-        self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
+        # self.using_columns = ['subject_entity', 'object_entity', 'sentence']
+        self.using_columns = ['sentence', 'subject_entity', 'subject_start', 'subject_end', 'object_entity', 'object_start', 'object_end']
+        self.entity_tokens = ['<sub>', '</sub>', '<obj>', '</obj>']
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         self.tokenizer.add_special_tokens({
-            'additional_special_tokens': ['[ENTITY]', '[/ENTITY]']
+            'additional_special_tokens': ['<sub>', '</sub>', '<obj>', '</obj>']
         })
 
     def num_to_label(self, label):
@@ -73,19 +70,27 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
-    def add_entity_token(self, sentence, subject_entity, object_entity):
-        for entity in [subject_entity, object_entity]:
-            sentence = sentence.replace(entity, self.entity_tokens[0] + entity + self.entity_tokens[1])
+    def add_entity_token(self, sentence, subject_entity, subject_start, subject_end, object_entity, object_start, object_end):
+        if subject_end <= object_start:
+            sentence = sentence[:subject_start] + '<sub>' + sentence[subject_start:subject_end] + '</sub>' + sentence[subject_end:]
+            sentence = sentence[:object_start+11] + '<obj>' + sentence[object_start+11:object_end+11] + '</obj>' + sentence[object_end+11:]
+        else:
+            sentence = sentence[:object_start] + '<obj>' + sentence[object_start:object_end] + '</obj>' + sentence[object_end:]
+            sentence = sentence[:subject_start+11] + '<sub>' + sentence[subject_start+11:subject_end+11] + '</sub>' + sentence[subject_end+11:]
+            
+
         return sentence
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
+            item = [item[column] for column in self.using_columns]
+            item = self.add_entity_token(*item)
+            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
             # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns[:-1]])
             # concat_entity += '[SEP]' + self.add_entity_token(item['sentence'], item['subject_entity'], item['object_entity'])
             outputs = self.tokenizer(
-                concat_entity, 
+                item, 
                 add_special_tokens=True, 
                 padding='max_length',
                 truncation=True,
@@ -97,19 +102,66 @@ class Dataloader(pl.LightningDataModule):
     def preprocessing(self, df: pd.DataFrame):
         subject_entity = []
         object_entity = []
-        for i, j in tqdm(zip(df['subject_entity'], df['object_entity'])):
-            i = i[1:-1].split(',')[0].split(':')[1].strip()[1:-1]
-            j = j[1:-1].split(',')[0].split(':')[1].strip()[1:-1]
 
-            subject_entity.append(i)
-            object_entity.append(j)
+        subject_start = []
+        object_start = []
+
+        subject_end = []
+        object_end = []
+
+        subject_tag = []
+        object_tag = []
+
+        for sub, obj in tqdm(zip(df['subject_entity'], df['object_entity'])):
+            sub = eval(sub)
+            sub_text = sub['word']
+            sub_idx_start = sub['start_idx']
+            sub_idx_end = sub['end_idx']+1
+            sub_type = sub['type']
+
+            obj = eval(obj)
+            obj_text = obj['word']
+            obj_idx_start = obj['start_idx']
+            obj_idx_end = obj['end_idx']+1
+            obj_type = obj['type']
+            # sub_tmp = sub[1:-1].split(', ')
+            # sub_text = sub_tmp[0].split(':')[1].strip()[1:-1]
+            # sub_idx_start = int(sub_tmp[1].split(':')[1].strip())
+            # sub_idx_end = int(sub_tmp[2].split(':')[1].strip()) + 1
+            # sub_type = sub_tmp[3].split(':')[1].strip().strip("'")
+
+            # obj_tmp = obj[1:-1].split(', ')
+            # obj_text = obj_tmp[0].split(':')[1].strip()[1:-1]
+            # print(obj)
+            # print(obj_tmp)
+            # obj_idx_start = int(obj_tmp[1].split(':')[1].strip())
+            # obj_idx_end = int(obj_tmp[2].split(':')[1].strip()) + 1
+            # obj_type = obj_tmp[3].split(':')[1].strip().strip("'")
+
+            subject_entity.append(sub_text)
+            object_entity.append(obj_text)
+
+            subject_start.append(sub_idx_start)
+            object_start.append(obj_idx_start)
+
+            subject_end.append(sub_idx_end)
+            object_end.append(obj_idx_end)
+
+            subject_tag.append(sub_type)
+            object_tag.append(obj_type)
         
         try:
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
                 'sentence': df['sentence'],
                 'subject_entity': subject_entity,
+                'subject_start': subject_start,
+                'subject_end' : subject_end,
+                'subject_tag' : subject_tag,
                 'object_entity': object_entity,
+                'object_start': object_start,
+                'object_end' : object_end,
+                'object_tag' : object_tag,
                 'label': df['label'],
             })
             
@@ -120,7 +172,13 @@ class Dataloader(pl.LightningDataModule):
                 'id': df['id'], 
                 'sentence': df['sentence'],
                 'subject_entity': subject_entity,
+                'subject_start': subject_start,
+                'subject_end' : subject_end,
+                'subject_tag' : subject_tag,
                 'object_entity': object_entity,
+                'object_start': object_start,
+                'object_end' : object_end,
+                'object_tag' : object_tag
             })
             inputs = self.tokenizing(preprocessed_df)
             targets = []
