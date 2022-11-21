@@ -11,7 +11,6 @@ from tqdm.auto import tqdm
 import pytorch_lightning as pl
 import pickle as pkl
 
-import metrics
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, inputs: List[dict], labels: List[int]):
