@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--max_epoch', default=20, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--pooling', default=True, type=bool)
     parser.add_argument('--train_path', default='/opt/ml/dataset/train/train_split.csv')
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/val_split.csv')
     parser.add_argument('--test_path', default='/opt/ml/dataset/train/val_split.csv')
@@ -48,14 +49,18 @@ if __name__ == '__main__':
         shuffle=True
     )
 
-    model = Model(args.model_name, args.learning_rate)
+    model = Model(
+        args.model_name, 
+        args.learning_rate,
+        args.pooling
+    )
 
     trainer = pl.Trainer(
         accelerator='gpu',
         devices=1,
         max_epochs=args.max_epoch, 
         log_every_n_steps=1,
-        precision=16,
+        num_sanity_val_steps=0,
         logger=wandb_logger
     )
 
