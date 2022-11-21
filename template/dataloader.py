@@ -50,12 +50,12 @@ class Dataloader(pl.LightningDataModule):
 
         # self.using_columns = ['subject_entity', 'object_entity', 'sentence']
         self.using_columns = ['sentence', 'subject_entity', 'subject_start', 'subject_end', 'object_entity', 'object_start', 'object_end']
-        self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
+        self.entity_tokens = ['<sub>', '</sub>', '<obj>', '</obj>']
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         self.tokenizer.add_special_tokens({
-            'additional_special_tokens': ['[ENTITY]', '[/ENTITY]']
+            'additional_special_tokens': ['<sub>', '</sub>', '<obj>', '</obj>']
         })
 
     def num_to_label(self, label):
