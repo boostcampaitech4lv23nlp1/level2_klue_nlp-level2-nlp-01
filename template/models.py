@@ -14,13 +14,13 @@ import metrics
 from dataloader import *
 
 class Model(pl.LightningModule):
-    def __init__(self, model_name, lr):
+    def __init__(self, model_name:str, lr: float, pooling: bool) -> None:
         super().__init__()
         self.save_hyperparameters()
 
         self.model_name = model_name
         self.lr = lr
-
+        self.pooling = pooling
 
         self.labels_all = []
         self.preds_all = []
@@ -33,11 +33,21 @@ class Model(pl.LightningModule):
         self.classification = torch.nn.Linear(1024, 30)
         self.criterion = torch.nn.CrossEntropyLoss()
 
-    def forward(self, x: dict):
+    # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
+    def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
+        token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
+        
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+
+    def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
         model_outputs = self.model(**x)
         
-        context = model_outputs['last_hidden_state'][:, 0, :]
-        out = self.classification(context)
+        if self.pooling is True:
+            out = self.mean_pooling(model_outputs, x['attention_mask'])
+        else:
+            out = model_outputs['last_hidden_state'][:, 0, :]
+        out = self.classification(out)
         return out
 
     def training_step(self, batch, batch_idx):
@@ -89,7 +99,7 @@ class Model(pl.LightningModule):
         self.probs_all += probs
         self.preds_all += preds
 
-    def test_epoch_end(self, outputs) -> None:
+    def test_epoch_end(self, outputs):
         labels = np.asarray(self.labels_all)
         probs = np.asarray(self.probs_all)
         preds = np.asarray(self.preds_all)
