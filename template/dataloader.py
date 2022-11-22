@@ -1,6 +1,8 @@
 import os
 import re
 import argparse
+import ast
+
 from typing import *
 
 import torch
@@ -81,6 +83,7 @@ class Dataloader(pl.LightningDataModule):
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
+
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
             concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
             # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns[:-1]])
@@ -94,23 +97,31 @@ class Dataloader(pl.LightningDataModule):
             )
             data.append(outputs)
         return data
+    
+    def string_to_dict(self, string: str):
+
+        return
 
     def preprocessing(self, df: pd.DataFrame):
-        subject_entity = []
-        object_entity = []
-        for i, j in tqdm(zip(df['subject_entity'], df['object_entity'])):
-            i = i[1:-1].split(',')[0].split(':')[1].strip()[1:-1]
-            j = j[1:-1].split(',')[0].split(':')[1].strip()[1:-1]
+        subject_entities = []
+        object_entities = []
+        ids = []
 
-            subject_entity.append(i)
-            object_entity.append(j)
+        for sub, obj in tqdm(zip(df['subject_entity'], df['object_entity'])):
+            # 보안 검증 : https://docs.python.org/3/library/ast.html
+            subject_entity = ast.literal_eval(sub)
+            object_entity = ast.literal_eval(obj)
+
+            subject_entities.append(subject_entity['word'])
+            object_entities.append(object_entity['word'])
         
         try:
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
                 'sentence': df['sentence'],
-                'subject_entity': subject_entity,
-                'object_entity': object_entity,
+                'subject_entity': subject_entities,
+                'object_entity': object_entities,
+                'ids': ids,
                 'label': df['label'],
             })
             
