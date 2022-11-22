@@ -50,6 +50,7 @@ class Dataloader(pl.LightningDataModule):
         self.predict_dataset = None
         self.shuffle = shuffle
 
+        self.added_token_num = 0
         self.using_columns = ['subject_entity', 'object_entity', 'sentence']
         self.special_tokens = [
             '[ORG]', '[/ORG]', 
@@ -62,7 +63,7 @@ class Dataloader(pl.LightningDataModule):
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
-        self.tokenizer.add_special_tokens({
+        self.added_token_num += self.tokenizer.add_special_tokens({
             'additional_special_tokens': self.special_tokens
         })
 
@@ -86,7 +87,7 @@ class Dataloader(pl.LightningDataModule):
     def add_entity_token(self, item: pd.Series):
         '''
         before : '1953년에는 테네시주 멤피스에서 활동하던 선 레코드 소속 프로듀서인 샘 필립스에 의해 가수로 데뷔했다.'
-        after : '1953년에는 테네시주 멤피스에서 활동하던 [ORG]선 레코드[ORG] 소속 프로듀서인 [PER]샘 필립스[/PER]에 의해 가수로 데뷔했다.'
+        after : '1953년에는 테네시주 멤피스에서 활동하던 [ORG]선 레코드[/ORG] 소속 프로듀서인 [PER]샘 필립스[/PER]에 의해 가수로 데뷔했다.'
         '''
         sentence = item['sentence']
         ids = item['ids']
