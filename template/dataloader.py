@@ -2,7 +2,7 @@ import os
 import re
 import argparse
 from typing import *
-
+import json
 import torch
 import torchmetrics
 import pandas as pd
@@ -97,8 +97,8 @@ class Dataloader(pl.LightningDataModule):
     
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
             
-            subject_entity = '@*' + item['subject_type'] + '*' + item['subject_entity'] + '@'
-            object_entity = '#^' + item['object_type'] + '^' + item['object_entity'] + '#'
+            subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
+            object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
             concat_entity = '[SEP]'.join([column for column in self.using_columns])
             
             outputs = self.tokenizer(
@@ -115,9 +115,9 @@ class Dataloader(pl.LightningDataModule):
     def add_entity_marker_punct(self, sentence, sub_word, obj_word, sub_type, obj_type, ss, se, os, oe):
         if ss < os:
             new_sentence = sentence[:ss] + '@'+ '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 : os] + '#' + '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 :]
-        else:  
+        else: 
             new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]
-            
+    
         return new_sentence
     
     def preprocessing(self, df: pd.DataFrame):
@@ -128,17 +128,16 @@ class Dataloader(pl.LightningDataModule):
         object_type = []  
         
         for sub,obj,sent in zip(df['subject_entity'], df['object_entity'], df['sentence']):
-            sub_word = sub[1:-1].split(':')[1].replace("'", '').split(',')[0].strip()
-            obj_word = obj[1:-1].split(':')[1].replace("'", '').split(',')[0].strip()
-            
-            ss = int(sub.split(':')[2].split(',')[0].strip())   # subject_start
-            se = int(sub.split(':')[3].split(',')[0].strip())   # sub_end
-            os = int(obj.split(':')[2].split(',')[0].strip())   # obj_start
-            "{'word': '리그 오브 레전드', 'start_idx': 56, 'end_idx': 64, 'type': 'POH'}"
-            oe = int(obj.split(':')[3].split(',')[0].strip())   # obj_end
-            sub_type = sub[1:-1].split(':')[4].replace("'", '').strip() # sub_ner
-            obj_type = obj[1:-1].split(':')[4].replace("'", '').strip() #obj_ner
-            
+            sub_word = sub[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
+            obj_word = obj[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
+
+            ss = int(sub.split("':")[2].split(',')[0].strip())   # subject_start
+            se = int(sub.split("':")[3].split(',')[0].strip())   # sub_end
+            os = int(obj.split("':")[2].split(',')[0].strip())   # obj_start
+            oe = int(obj.split("':")[3].split(',')[0].strip())   # obj_end
+            sub_type = sub[1:-1].split("':")[4].replace("'", '').strip() # sub_ner
+            obj_type = obj[1:-1].split("':")[4].replace("'", '').strip() #obj_ner
+
             prepro_sent = self.add_entity_marker_punct(sent, sub_word, obj_word, sub_type, obj_type, ss, se, os, oe)
             
             subject_entity.append(sub_word)
