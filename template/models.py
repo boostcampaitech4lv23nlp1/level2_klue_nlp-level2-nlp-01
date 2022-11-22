@@ -10,6 +10,7 @@ from tqdm.auto import tqdm
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
+import losses
 import metrics
 from dataloader import *
 
@@ -31,7 +32,9 @@ class Model(pl.LightningModule):
         )
 
         self.classification = torch.nn.Linear(1024, 30)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = losses.FocalLoss()
+        
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
