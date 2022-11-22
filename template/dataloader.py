@@ -51,12 +51,19 @@ class Dataloader(pl.LightningDataModule):
         self.shuffle = shuffle
 
         self.using_columns = ['subject_entity', 'object_entity', 'sentence']
-        self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
+        self.special_tokens = [
+            '[ORG]', '[/ORG]', 
+            '[PER]', '[/PER]', 
+            '[POH]', '[/POH]', 
+            '[LOC]', '[/LOC]', 
+            '[DAT]', '[/DAT]', 
+            '[NOH]', '[/NOH]'
+        ]
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         self.tokenizer.add_special_tokens({
-            'additional_special_tokens': ['[ENTITY]', '[/ENTITY]']
+            'additional_special_tokens': self.special_tokens
         })
 
     def num_to_label(self, label):
@@ -76,18 +83,33 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
-    def add_entity_token(self, sentence, subject_entity, object_entity):
-        for entity in [subject_entity, object_entity]:
-            sentence = sentence.replace(entity, self.entity_tokens[0] + entity + self.entity_tokens[1])
+    def add_entity_token(self, item: pd.Series):
+        '''
+        before : '1953년에는 테네시주 멤피스에서 활동하던 선 레코드 소속 프로듀서인 샘 필립스에 의해 가수로 데뷔했다.'
+        after : '1953년에는 테네시주 멤피스에서 활동하던 [ORG]선 레코드[ORG] 소속 프로듀서인 [PER]샘 필립스[/PER]에 의해 가수로 데뷔했다.'
+        '''
+        sentence = item['sentence']
+        ids = item['ids']
+        types = item['types']
+
+        slide_size = 0
+        for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
+            special_token_pair = f'[{types[i]}]', f'[/{types[i]}]'
+            attached = special_token_pair[0] + entity + special_token_pair[1]
+            if special_token_pair not in self.special_tokens:
+                self.special_tokens += special_token_pair
+
+            sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+            slide_size += len(f'[{types[i]}]' + f'[/{types[i]}]')
         return sentence
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
-            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns[:-1]])
-            # concat_entity += '[SEP]' + self.add_entity_token(item['sentence'], item['subject_entity'], item['object_entity'])
+            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
+            concat_entity = self.add_entity_token(item)
+
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
@@ -98,13 +120,11 @@ class Dataloader(pl.LightningDataModule):
             data.append(outputs)
         return data
     
-    def string_to_dict(self, string: str):
-
-        return
-
     def preprocessing(self, df: pd.DataFrame):
         subject_entities = []
         object_entities = []
+        ids = []
+        types = []
 
         for sub, obj in tqdm(zip(df['subject_entity'], df['object_entity'])):
             # 보안 검증 : https://docs.python.org/3/library/ast.html
@@ -113,6 +133,8 @@ class Dataloader(pl.LightningDataModule):
 
             subject_entities.append(subject_entity['word'])
             object_entities.append(object_entity['word'])
+            ids.append((subject_entity['start_idx'], object_entity['start_idx']))
+            types.append((subject_entity['type'], object_entity['type']))
         
         try:
             preprocessed_df = pd.DataFrame({
@@ -120,6 +142,8 @@ class Dataloader(pl.LightningDataModule):
                 'sentence': df['sentence'],
                 'subject_entity': subject_entities,
                 'object_entity': object_entities,
+                'ids': ids,
+                'types': types,
                 'label': df['label'],
             })
             
@@ -131,6 +155,8 @@ class Dataloader(pl.LightningDataModule):
                 'sentence': df['sentence'],
                 'subject_entity': subject_entities,
                 'object_entity': subject_entities,
+                'ids': ids,
+                'types': types,
             })
             inputs = self.tokenizing(preprocessed_df)
             targets = []

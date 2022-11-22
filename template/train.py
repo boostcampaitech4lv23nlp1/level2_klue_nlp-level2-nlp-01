@@ -1,4 +1,5 @@
 import re
+import os
 import argparse
 
 import torch
@@ -17,10 +18,15 @@ from models import *
 
 
 if __name__ == '__main__':
+    # cuda debugging
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
-    parser.add_argument('--batch_size', default=16, type=int)
+    parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=10, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     parser.add_argument('--pooling', default=True, type=bool)
@@ -36,7 +42,7 @@ if __name__ == '__main__':
     #     anony = "must"
     #     print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    # wandb.init(project="level2", name= f"{args.model_name}")
+    # wandb.init(project="level2", name= f"{args.model_name}-pooling-focal")
     # wandb_logger = WandbLogger('level2')    
 
     dataloader = Dataloader(
