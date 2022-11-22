@@ -32,8 +32,8 @@ class Model(pl.LightningModule):
         )
 
         self.classification = torch.nn.Linear(1024, 30)
-        self.criterion = torch.nn.CrossEntropyLoss()
-        # self.criterion = losses.FocalLoss()
+        # self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = losses.FocalLoss()
         
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
