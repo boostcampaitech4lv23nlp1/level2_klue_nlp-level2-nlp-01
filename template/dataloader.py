@@ -34,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, marker, shuffle):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -48,6 +48,8 @@ class Dataloader(pl.LightningDataModule):
         self.val_dataset = None
         self.test_dataset = None
         self.predict_dataset = None
+
+        self.marker = marker
         self.shuffle = shuffle
 
         self.added_token_num = 0
@@ -63,9 +65,10 @@ class Dataloader(pl.LightningDataModule):
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
-        self.added_token_num += self.tokenizer.add_special_tokens({
-            'additional_special_tokens': self.special_tokens
-        })
+        if self.marker is True:
+            self.added_token_num += self.tokenizer.add_special_tokens({
+                'additional_special_tokens': self.special_tokens
+            })
 
     def num_to_label(self, label):
         origin_label = []
@@ -84,33 +87,46 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
-    def add_entity_token(self, item: pd.Series):
+    def add_entity_token(self, item: pd.Series, method='tem'):
         '''
-        before : '1953년에는 테네시주 멤피스에서 활동하던 선 레코드 소속 프로듀서인 샘 필립스에 의해 가수로 데뷔했다.'
-        after : '1953년에는 테네시주 멤피스에서 활동하던 [ORG]선 레코드[/ORG] 소속 프로듀서인 [PER]샘 필립스[/PER]에 의해 가수로 데뷔했다.'
+        ### Add Entity Token
+        args:
+            - item: 1 row in pandas DataFrame
+            - method : marking method
+                - none : no use method
+                - tem : typed embedding marker
+                - tempu : typed embedding marker (punct)
+
+        [tem]
+            before : '1953년에는 테네시주 멤피스에서 활동하던 선 레코드 소속 프로듀서인 샘 필립스에 의해 가수로 데뷔했다.'
+            after : '1953년에는 테네시주 멤피스에서 활동하던 [ORG]선 레코드[/ORG] 소속 프로듀서인 [PER]샘 필립스[/PER]에 의해 가수로 데뷔했다.'
+
+        [tempu]
+            준비중
         '''
         sentence = item['sentence']
         ids = item['ids']
         types = item['types']
 
-        slide_size = 0
-        for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-            special_token_pair = f'[{types[i]}]', f'[/{types[i]}]'
-            attached = special_token_pair[0] + entity + special_token_pair[1]
-            if special_token_pair not in self.special_tokens:
-                self.special_tokens += special_token_pair
+        if method == 'none:':
+            return '[SEP]'.join([item[column] for column in self.using_columns])
+        elif method == 'tem':
+            slide_size = 0
+            for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
+                special_token_pair = f'[{types[i]}]', f'[/{types[i]}]'
+                attached = special_token_pair[0] + entity + special_token_pair[1]
+                if special_token_pair not in self.special_tokens:
+                    self.special_tokens += special_token_pair
 
-            sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-            slide_size += len(f'[{types[i]}]' + f'[/{types[i]}]')
+                sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+                slide_size += len(f'[{types[i]}]' + f'[/{types[i]}]')
         return sentence
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            # concat_entity = '[SEP]'.join([item[column] for column in self.using_columns])
-            concat_entity = self.add_entity_token(item)
-
+            concat_entity = self.add_entity_token(item, method='tem')
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 

@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=10, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
     parser.add_argument('--train_path', default='../dataset/train/train_split.csv')
     parser.add_argument('--dev_path', default='../dataset/train/val_split.csv')
@@ -52,6 +53,7 @@ if __name__ == '__main__':
         args.dev_path,
         args.test_path,
         args.predict_path,
+        args.marker,
         shuffle=True
     )
 
