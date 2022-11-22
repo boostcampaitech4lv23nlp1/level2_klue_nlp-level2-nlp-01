@@ -105,7 +105,6 @@ class Dataloader(pl.LightningDataModule):
     def preprocessing(self, df: pd.DataFrame):
         subject_entities = []
         object_entities = []
-        ids = []
 
         for sub, obj in tqdm(zip(df['subject_entity'], df['object_entity'])):
             # 보안 검증 : https://docs.python.org/3/library/ast.html
@@ -121,7 +120,6 @@ class Dataloader(pl.LightningDataModule):
                 'sentence': df['sentence'],
                 'subject_entity': subject_entities,
                 'object_entity': object_entities,
-                'ids': ids,
                 'label': df['label'],
             })
             
@@ -131,8 +129,8 @@ class Dataloader(pl.LightningDataModule):
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
                 'sentence': df['sentence'],
-                'subject_entity': subject_entity,
-                'object_entity': object_entity,
+                'subject_entity': subject_entities,
+                'object_entity': subject_entities,
             })
             inputs = self.tokenizing(preprocessed_df)
             targets = []

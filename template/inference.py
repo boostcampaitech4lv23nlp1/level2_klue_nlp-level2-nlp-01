@@ -49,6 +49,7 @@ if __name__ == '__main__':
     model_name = re.sub(r'[/]', '-', args.model_name)
     model = torch.load(f'{model_name}.pt')
 
+    
     results = trainer.predict(model=model, datamodule=dataloader)
     preds_all, probs_all = [], []
     for preds, probs in results:
