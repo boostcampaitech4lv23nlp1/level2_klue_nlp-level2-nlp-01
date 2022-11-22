@@ -65,6 +65,7 @@ class Dataloader(pl.LightningDataModule):
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
+        
         if self.marker is True:
             self.added_token_num += self.tokenizer.add_special_tokens({
                 'additional_special_tokens': self.special_tokens

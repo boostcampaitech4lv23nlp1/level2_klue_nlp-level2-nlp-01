@@ -43,7 +43,7 @@ if __name__ == '__main__':
         anony = "must"
         print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    wandb.init(project="level2", name= f"{args.model_name}-pooling-focal-typing_entity")
+    wandb.init(project="level2", name= f"{args.model_name}")
     wandb_logger = WandbLogger('level2')    
 
     dataloader = Dataloader(
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         args.dev_path,
         args.test_path,
         args.predict_path,
-        args.marker,
+        args.masking,
         shuffle=True
     )
 
@@ -71,11 +71,10 @@ if __name__ == '__main__':
         
     trainer = pl.Trainer(
         accelerator='gpu',
-        devices=4,
+        devices=1,
         max_epochs=args.max_epoch, 
         log_every_n_steps=1,
         num_sanity_val_steps=0,
-        precision=16,
         logger=wandb_logger
     )
 

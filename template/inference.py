@@ -20,9 +20,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
-    parser.add_argument('--batch_size', default=1, type=int)
+    parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--max_epoch', default=1, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--train_path', default='/opt/ml/dataset/train/train_split.csv')
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/val_split.csv')
     parser.add_argument('--test_path', default='/opt/ml/dataset/train/val_split.csv')
@@ -36,6 +37,7 @@ if __name__ == '__main__':
         args.dev_path,
         args.test_path,
         args.predict_path,
+        args.masking,
         shuffle=False
     )
 
