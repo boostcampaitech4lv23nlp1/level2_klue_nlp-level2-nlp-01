@@ -19,8 +19,8 @@ from models import *
 
 if __name__ == '__main__':
     # cuda debugging
-    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
     parser = argparse.ArgumentParser()
@@ -68,8 +68,7 @@ if __name__ == '__main__':
         )
         
     trainer = pl.Trainer(
-        accelerator='gpu',
-        devices=1,
+        gpus=4,
         max_epochs=args.max_epoch, 
         log_every_n_steps=1,
         num_sanity_val_steps=0,
