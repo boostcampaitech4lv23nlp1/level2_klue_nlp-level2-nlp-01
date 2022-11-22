@@ -68,7 +68,8 @@ if __name__ == '__main__':
         )
         
     trainer = pl.Trainer(
-        gpus=4,
+        accelerator='gpu',
+        devices=4,
         max_epochs=args.max_epoch, 
         log_every_n_steps=1,
         num_sanity_val_steps=0,
