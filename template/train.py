@@ -27,7 +27,6 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--max_epoch', default=5, type=int)
-    parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
     parser.add_argument('--masking', default=True, type=bool)
@@ -76,7 +75,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         accelerator='gpu',
         devices=1,
-        max_epochs=args.max_epoch, 
+        max_epochs=args.max_epoch,  
         log_every_n_steps=1,
         num_sanity_val_steps=0,
         logger=wandb_logger
