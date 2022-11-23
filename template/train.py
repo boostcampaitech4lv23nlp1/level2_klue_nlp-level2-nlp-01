@@ -31,7 +31,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
-    parser.add_argument('--criterion', default='focal_loss', type=str)  # cross_entropy, focal_loss
+    parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
 
     parser.add_argument('--train_path', default='../dataset/train/new_train_split.csv')
     parser.add_argument('--dev_path', default='../dataset/train/new_val_split.csv')
@@ -45,8 +45,8 @@ if __name__ == '__main__':
         anony = "must"
         print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    wandb.init(project="level2", name= f"{args.model_name}-masking")
-    wandb_logger = WandbLogger('level2')    
+    wandb.init(project="level2", name= f"{args.model_name}-masking-focal_loss-cross_entropy")
+    wandb_logger = WandbLogger('level2')
 
     dataloader = Dataloader(
         args.tokenizer_name,

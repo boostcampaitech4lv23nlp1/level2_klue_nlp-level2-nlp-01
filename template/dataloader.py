@@ -101,7 +101,7 @@ class Dataloader(pl.LightningDataModule):
         ids = item['ids']
         types = item['types']
 
-        if method == 'none':
+        if self.masking is False:
             return '[SEP]'.join([item[column] for column in self.using_columns])
         else:
             slide_size = 0
@@ -121,7 +121,7 @@ class Dataloader(pl.LightningDataModule):
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = self.add_entity_token(item, method='tem')
+            concat_entity = self.add_entity_token(item)
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
@@ -166,7 +166,7 @@ class Dataloader(pl.LightningDataModule):
                 'id': df['id'], 
                 'sentence': df['sentence'],
                 'subject_entity': subject_entities,
-                'object_entity': subject_entities,
+                'object_entity': object_entities,
                 'ids': ids,
                 'types': types,
             })

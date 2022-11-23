@@ -20,11 +20,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
-    parser.add_argument('--batch_size', default=16, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--max_epoch', default=1, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
-    parser.add_argument('--masking', default=False, type=bool)
+    parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
     parser.add_argument('--criterion', default='focal_loss', type=str)  # cross_entropy, focal_loss
 
