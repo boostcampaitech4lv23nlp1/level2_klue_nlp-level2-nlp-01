@@ -34,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, marker, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, shuffle):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -49,7 +49,7 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
-        self.marker = marker
+        self.masking = masking
         self.shuffle = shuffle
 
         self.added_token_num = 0
@@ -66,7 +66,7 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        if self.marker is True:
+        if self.masking is True:
             self.added_token_num += self.tokenizer.add_special_tokens({
                 'additional_special_tokens': self.special_tokens
             })
@@ -88,7 +88,7 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
-    def add_entity_token(self, item: pd.Series, method='tem'):
+    def add_entity_token(self, item: pd.Series, method=None):
         '''
         ### Add Entity Token
         args:
@@ -109,25 +109,24 @@ class Dataloader(pl.LightningDataModule):
         ids = item['ids']
         types = item['types']
 
-        if method == 'none:':
+        if method is None:
+            assert self.masking is not True, 'args.masking is not False'
             return '[SEP]'.join([item[column] for column in self.using_columns])
         elif method == 'tem':
             slide_size = 0
             for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
                 special_token_pair = f'[{types[i]}]', f'[/{types[i]}]'
                 attached = special_token_pair[0] + entity + special_token_pair[1]
-                if special_token_pair not in self.special_tokens:
-                    self.special_tokens += special_token_pair
-
                 sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
                 slide_size += len(f'[{types[i]}]' + f'[/{types[i]}]')
+            sentence = item['sentence'] + sentence
         return sentence
+
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
-
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = self.add_entity_token(item, method='tem')
+            concat_entity = self.add_entity_token(item)
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 

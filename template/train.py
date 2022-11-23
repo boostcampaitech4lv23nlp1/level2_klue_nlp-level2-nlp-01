@@ -26,12 +26,17 @@ if __name__ == '__main__':
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=16, type=int)
-    parser.add_argument('--max_epoch', default=10, type=int)
+    parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
-    parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
-    parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
-    parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
-    parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
+    
+    parser.add_argument('--masking', default=False, type=bool)
+    parser.add_argument('--pooling', default=True, type=bool)
+    parser.add_argument('--criterion', default='focal_loss', type=str)  # cross_entropy, focal_loss
+
+    parser.add_argument('--train_path', default='../dataset/train/new_train_split.csv')
+    parser.add_argument('--dev_path', default='../dataset/train/new_val_split.csv')
+    parser.add_argument('--test_path', default='../dataset/train/new_val_split.csv')
+    parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
     try:
@@ -57,7 +62,8 @@ if __name__ == '__main__':
     model = Model(
         args.model_name, 
         args.learning_rate,
-        args.pooling
+        args.pooling,
+        args.criterion
     )
 
     # tracking special tokens
