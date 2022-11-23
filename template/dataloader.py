@@ -66,7 +66,7 @@ class Dataloader(pl.LightningDataModule):
         self.shuffle = shuffle
             
         self.ner_type = {'ORG':'단체', 'PER':'사람', 'DAT':'날짜', 'LOC':'위치', 'POH':'기타', 'NOH':'수량'}
-        self.using_columns = ['subject_entity', 'object_entity']
+        self.using_columns = {'subject_entity':'', 'object_entity':''}
         # self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
@@ -97,9 +97,13 @@ class Dataloader(pl.LightningDataModule):
     
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
             
+            # self.using_columns['subject_entity'] = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
+            # self.using_columns['object_entity'] = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
+            # concat_entity = '[SEP]'.join([val for column,val in self.using_columns.items()])
+            
             subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
-            concat_entity = '[SEP]'.join([column for column in self.using_columns])
+            concat_entity = subject_entity+ '[SEP]' + object_entity
             
             outputs = self.tokenizer(
                 concat_entity,
@@ -117,6 +121,7 @@ class Dataloader(pl.LightningDataModule):
             new_sentence = sentence[:ss] + '@'+ '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 : os] + '#' + '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 :]
         else: 
             new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]
+            # new_sentence = sentence[:os] + '@'+ '*' + self.ner_type[obj_type] + '*' + obj_word + '@' + sentence[oe + 1 : ss] + '#' + '^' + self.ner_type[sub_type] + '^' + sub_word + '#' + sentence[se + 1 :]
     
         return new_sentence
     
