@@ -19,9 +19,8 @@ from models import *
 
 if __name__ == '__main__':
     # cuda debugging
-    # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
@@ -29,12 +28,10 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--max_epoch', default=10, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
-    parser.add_argument('--masking', default=True, type=bool)
-    parser.add_argument('--pooling', default=True, type=bool)
-    parser.add_argument('--train_path', default='../dataset/train/train_split.csv')
-    parser.add_argument('--dev_path', default='../dataset/train/val_split.csv')
-    parser.add_argument('--test_path', default='../dataset/train/val_split.csv')
-    parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
+    parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
+    parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
+    parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
+    parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
     try:

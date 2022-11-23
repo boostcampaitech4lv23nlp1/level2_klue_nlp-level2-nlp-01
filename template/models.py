@@ -13,6 +13,7 @@ import pytorch_lightning as pl
 import losses
 import metrics
 from dataloader import *
+import losses
 
 class Model(pl.LightningModule):
     def __init__(self, model_name:str, lr: float, pooling: bool) -> None:
