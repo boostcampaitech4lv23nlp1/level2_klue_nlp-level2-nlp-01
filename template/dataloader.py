@@ -69,7 +69,7 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        if self.marker is True:
+        if self.masking is True:
             self.added_token_num += self.tokenizer.add_special_tokens({
                 'additional_special_tokens': self.special_tokens
             })
@@ -112,7 +112,9 @@ class Dataloader(pl.LightningDataModule):
                 special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
                 attached = special_token_pair[0] + entity + special_token_pair[1]
                 sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-                slide_size += len(f'[{types[i]}]' + f'[/{types[i]}]')
+
+                if ids[0] < ids[1]:
+                    slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
         return sentence
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
