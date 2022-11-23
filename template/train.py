@@ -3,7 +3,7 @@ import os
 import argparse
 
 import torch
-import wandb
+# import wandb
 import transformers
 import torchmetrics
 import pandas as pd
@@ -36,14 +36,14 @@ if __name__ == '__main__':
     parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
-    try:
-        wandb.login(key='4c0a01eaa2bd589d64c5297c5bc806182d126350')
-    except:
-        anony = "must"
-        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
+    # try:
+    #     wandb.login(key='4c0a01eaa2bd589d64c5297c5bc806182d126350')
+    # except:
+    #     anony = "must"
+    #     print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    wandb.init(project="level2", name= f"{args.model_name}-pooling-focal-typing_entity")
-    wandb_logger = WandbLogger('level2')    
+    # wandb.init(project="level2", name= f"{args.model_name}-pooling-focal-typing_entity")
+    # wandb_logger = WandbLogger('level2')    
 
     dataloader = Dataloader(
         args.tokenizer_name,
@@ -69,12 +69,12 @@ if __name__ == '__main__':
         
     trainer = pl.Trainer(
         accelerator='gpu',
-        devices=4,
+        devices=1,
         max_epochs=args.max_epoch, 
         log_every_n_steps=1,
         num_sanity_val_steps=0,
         precision=16,
-        logger=wandb_logger
+        # logger=wandb_logger
     )
 
     # Train part

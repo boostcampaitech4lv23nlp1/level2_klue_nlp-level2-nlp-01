@@ -1,5 +1,6 @@
 import argparse
 from copy import deepcopy
+import sys
 
 import torch
 import numpy as np
@@ -55,6 +56,8 @@ class Model(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
+        print(x)
+        sys.exit()
         logits = self(x)
         loss = self.criterion(logits, y)
         self.log("train_loss", loss)
