@@ -16,14 +16,14 @@ from dataloader import *
 import losses
 
 class Model(pl.LightningModule):
-    def __init__(self, model_name:str, lr: float, pooling: bool) -> None:
+    def __init__(self, model_name:str, lr: float, pooling: bool, criterion: str) -> None:
         super().__init__()
         self.save_hyperparameters()
 
         self.model_name = model_name
         self.lr = lr
         self.pooling = pooling
-
+        
         self.labels_all = []
         self.preds_all = []
         self.probs_all = []
@@ -33,9 +33,12 @@ class Model(pl.LightningModule):
         )
 
         self.classification = torch.nn.Linear(1024, 30)
-        # self.criterion = torch.nn.CrossEntropyLoss()
-        self.criterion = losses.FocalLoss()
-        
+
+        assert criterion in ['cross_entropy', 'focal_loss'], "criterion not in model"
+        if criterion == 'cross_entropy':
+            self.criterion = torch.nn.CrossEntropyLoss()
+        elif criterion == 'focal_loss':
+            self.criterion = losses.FocalLoss()
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
