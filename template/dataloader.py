@@ -94,14 +94,14 @@ class Dataloader(pl.LightningDataModule):
     def add_entity_token(self, item: pd.Series, method='tem'):
         '''
         ### Add Entity Token
+        "가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
         "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-
         '''
         sentence = item['sentence']
         ids = item['ids']
         types = item['types']
 
-        if method == 'none:':
+        if method == 'none':
             return '[SEP]'.join([item[column] for column in self.using_columns])
         else:
             slide_size = 0
