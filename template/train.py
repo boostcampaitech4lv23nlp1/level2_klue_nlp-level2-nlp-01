@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--max_epoch', default=5, type=int)
+    parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
     parser.add_argument('--masking', default=True, type=bool)

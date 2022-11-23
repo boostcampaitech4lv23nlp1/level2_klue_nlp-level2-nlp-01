@@ -69,7 +69,7 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        if self.masking is True:
+        if self.marker is True:
             self.added_token_num += self.tokenizer.add_special_tokens({
                 'additional_special_tokens': self.special_tokens
             })
@@ -91,7 +91,7 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
-    def add_entity_token(self, item: pd.Series):
+    def add_entity_token(self, item: pd.Series, method='tem'):
         '''
         ### Add Entity Token
         "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
@@ -101,7 +101,7 @@ class Dataloader(pl.LightningDataModule):
         ids = item['ids']
         types = item['types']
 
-        if self.masking is False:
+        if method == 'none:':
             return '[SEP]'.join([item[column] for column in self.using_columns])
         else:
             slide_size = 0
@@ -112,14 +112,14 @@ class Dataloader(pl.LightningDataModule):
                 special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
                 attached = special_token_pair[0] + entity + special_token_pair[1]
                 sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-                slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
+                slide_size += len(f'[{types[i]}]' + f'[/{types[i]}]')
         return sentence
-
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
+
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = self.add_entity_token(item)
+            concat_entity = self.add_entity_token(item, method='tem')
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
