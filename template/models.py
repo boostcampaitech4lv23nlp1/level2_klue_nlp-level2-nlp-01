@@ -9,6 +9,7 @@ import transformers
 from tqdm.auto import tqdm
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from torch.optim.lr_scheduler import OneCycleLR
 
 import losses
 import metrics
@@ -131,5 +132,16 @@ class Model(pl.LightningModule):
         return preds, probs
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
-        return optimizer
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
+        lr_scheduler = {
+            'scheduler': OneCycleLR(
+                optimizer=optimizer,
+                max_lr=1e-5,
+                steps_per_epoch=912,
+                epochs=5,
+                pct_start=0.1
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+        return [optimizer], [lr_scheduler]

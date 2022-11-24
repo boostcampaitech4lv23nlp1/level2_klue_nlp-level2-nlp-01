@@ -65,14 +65,23 @@ class Dataloader(pl.LightningDataModule):
             '[/O:NOH]', '[S:ORG]', 
             '[/S:ORG]', '[O:POH]'
         ]
+        self.ner_tokens = {
+            'ORG':'단체', 
+            'PER':'사람', 
+            'DAT':'날짜', 
+            'LOC':'위치', 
+            'POH':'기타', 
+            'NOH':'수량'
+        }
+
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        if self.masking is True:
-            self.added_token_num += self.tokenizer.add_special_tokens({
-                'additional_special_tokens': self.special_tokens
-            })
+        # if self.masking is True:
+        #     self.added_token_num += self.tokenizer.add_special_tokens({
+        #         'additional_special_tokens': self.special_tokens
+        #     })
 
     def num_to_label(self, label):
         origin_label = []
@@ -91,11 +100,14 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
-    def add_entity_token(self, item: pd.Series, method='tem'):
+    def add_entity_token(self, item: pd.Series):
         '''
         ### Add Entity Token
-        "가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-        "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
+        - "가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
+            - "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
+        
+        - "김영록 전라남도지사를 비롯해 윤병태 정무부지사, 직원들이 폭력예방 교육을 받고 있다."
+            - "#^사람^김영록# 전라남도지사를 비롯해 @*사람*윤병태@ 정무부지사, 직원들이 폭력예방 교육을 받고 있다."
         '''
         sentence = item['sentence']
         ids = item['ids']
@@ -104,6 +116,7 @@ class Dataloader(pl.LightningDataModule):
         if self.masking is False:
             return '[SEP]'.join([item[column] for column in self.using_columns])
         else:
+            '''
             slide_size = 0
             # i = 0 -> subject entity
             # i = 1 -> object entity
@@ -115,13 +128,28 @@ class Dataloader(pl.LightningDataModule):
 
                 if ids[0] < ids[1]:
                     slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
+            '''
+
+            slide_size = 0
+            so = ['@*', '#^']
+            for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
+                special_token_pair = f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}', f'{so[i][0]}'
+                attached = special_token_pair[0] + entity + special_token_pair[1]
+                sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+
+                if ids[0] < ids[1]:
+                    slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
+
         return sentence
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = self.add_entity_token(item)
+            concat_entity = '[SEP]'.join(item[column] for column in self.using_columns[:2]) + '[SEP]'
+            concat_entity += self.add_entity_token(item)
+
+            # "로이킴[SEP]김상우[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
