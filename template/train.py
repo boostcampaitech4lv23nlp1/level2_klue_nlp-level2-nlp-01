@@ -11,6 +11,7 @@ from tqdm.auto import tqdm
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor
 from dataloader import *
 from models import *
 
@@ -22,18 +23,18 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=5, type=int)
-    parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--learning_rate', default=3e-5, type=float)
     parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
     parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
     parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
-    # try:
-    #     wandb.login(key='3e00a171508ab88512c57afafb441f5ee2b4864b')
-    # except:
-    #     anony = "must"
-    #     print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
+    try:
+        wandb.login(key='3e00a171508ab88512c57afafb441f5ee2b4864b')
+    except:
+        anony = "must"
+        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
     wandb.init(project="level2-model_baseline", name= f"{args.model_name}")
     wandb_logger = WandbLogger('level2-model_baseline')
@@ -47,20 +48,21 @@ if __name__ == '__main__':
                             shuffle=True)
     
     model = Model(args.model_name, args.learning_rate)
-    checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/template/models/",save_top_k=2, monitor="val_micro_f1",filename=f"klue-roberta-large")
+    checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/template/models/",save_top_k=2, monitor="val_micro_f1",filename="roberta-large+{epoch}+{val_micro_f1:.3f}")
+    lr_monitor = LearningRateMonitor(logging_interval='step')
     trainer = pl.Trainer(accelerator = 'gpu',
                         devices = 1,
                         max_epochs=args.max_epoch, 
                         log_every_n_steps=1,
                         precision=16,
-                        #logger = wandb_logger,
-                        callbacks=[checkpoint_callback]
+                        logger = wandb_logger,
+                        callbacks=[checkpoint_callback, lr_monitor]
                         )
 
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
-    # print(checkpoint_callback.best_model_path)
+    print(checkpoint_callback.best_model_path)
     # model_name = re.sub(r'[/]', '-', args.model_name)
 
     # torch.save(model, f'{model_name}.pt')

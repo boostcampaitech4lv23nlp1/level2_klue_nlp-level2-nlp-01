@@ -103,8 +103,8 @@ class Dataloader(pl.LightningDataModule):
             
             subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
-            concat_entity = subject_entity+ '[SEP]' + object_entity
-            
+            # concat_entity = subject_entity+ '[SEP]' + object_entity
+            concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'
             outputs = self.tokenizer(
                 concat_entity,
                 item['sentence'],
@@ -120,8 +120,8 @@ class Dataloader(pl.LightningDataModule):
         if ss < os:
             new_sentence = sentence[:ss] + '@'+ '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 : os] + '#' + '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 :]
         else: 
-            #new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]
-            new_sentence = sentence[:os] + '@'+ '*' + self.ner_type[obj_type] + '*' + obj_word + '@' + sentence[oe + 1 : ss] + '#' + '^' + self.ner_type[sub_type] + '^' + sub_word + '#' + sentence[se + 1 :]
+            new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]
+            #new_sentence = sentence[:os] + '@'+ '*' + self.ner_type[obj_type] + '*' + obj_word + '@' + sentence[oe + 1 : ss] + '#' + '^' + self.ner_type[sub_type] + '^' + sub_word + '#' + sentence[se + 1 :]
     
         return new_sentence
     
@@ -207,7 +207,7 @@ class Dataloader(pl.LightningDataModule):
         return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size,num_workers=8)
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size,num_workers=8)
+        return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
 
     def predict_dataloader(self):
-        return torch.utils.data.DataLoader(self.predict_dataset, batch_size=self.batch_size,num_workers=8)
+        return torch.utils.data.DataLoader(self.predict_dataset, batch_size=self.batch_size)
