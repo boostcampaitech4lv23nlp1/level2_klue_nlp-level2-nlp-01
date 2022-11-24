@@ -1,4 +1,5 @@
 import re
+import os
 import argparse
 
 import torch
@@ -18,6 +19,11 @@ from models import *
 
 
 if __name__ == '__main__':
+    # cuda debugging
+    # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
@@ -28,6 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
     parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
     parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
+
     args = parser.parse_args(args=[])
     
     try:
@@ -35,6 +42,7 @@ if __name__ == '__main__':
     except:
         anony = "must"
         print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
+
 
     wandb.init(project="level2-model_baseline", name= f"{args.model_name}")
     wandb_logger = WandbLogger('level2-model_baseline')
@@ -59,10 +67,10 @@ if __name__ == '__main__':
                         callbacks=[checkpoint_callback, lr_monitor]
                         )
 
+
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
     print(checkpoint_callback.best_model_path)
     # model_name = re.sub(r'[/]', '-', args.model_name)
-
     # torch.save(model, f'{model_name}.pt')

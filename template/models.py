@@ -9,21 +9,27 @@ import transformers
 from tqdm.auto import tqdm
 import torch.nn.functional as F
 import pytorch_lightning as pl
+
 from torch.optim.lr_scheduler import OneCycleLR
 from transformers import get_cosine_schedule_with_warmup
+
 import losses
 import metrics
 from dataloader import *
 
 class Model(pl.LightningModule):
+
     def __init__(self, model_name:str, lr: float) -> None:
+
         super().__init__()
         self.save_hyperparameters()
 
         self.model_name = model_name
         self.lr = lr
+
         self.pooling = 1
         self.epsilon = 0.1
+
         self.labels_all = []
         self.preds_all = []
         self.probs_all = []
@@ -37,9 +43,11 @@ class Model(pl.LightningModule):
         #     torch.nn.Linear(1024,30)
         # )
         self.classification = torch.nn.Linear(1024, 30)
+
         #self.criterion = torch.nn.CrossEntropyLoss()
         #self.criterion = losses.FocalLoss()
         
+
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
         token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
@@ -66,6 +74,7 @@ class Model(pl.LightningModule):
         ce_loss_w_soft_label = (1-self.epsilon) * ce_loss + self.epsilon / K * (avg_log_probs)
         return ce_loss_w_soft_label
         
+
 
     def training_step(self, batch, batch_idx):
         x, y = batch

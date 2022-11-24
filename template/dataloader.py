@@ -1,6 +1,8 @@
 import os
 import re
 import argparse
+import ast
+
 from typing import *
 import json
 import torch
@@ -64,7 +66,8 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
         self.shuffle = shuffle
-            
+
+        
         self.ner_type = {'ORG':'단체', 'PER':'사람', 'DAT':'날짜', 'LOC':'위치', 'POH':'기타', 'NOH':'수량'}
         self.using_columns = {'subject_entity':'', 'object_entity':''}
         # self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
@@ -74,6 +77,7 @@ class Dataloader(pl.LightningDataModule):
         # self.tokenizer.add_special_tokens({
         #     'additional_special_tokens': ['[ENTITY]', '[/ENTITY]']
         # })
+
 
     def num_to_label(self, label):
         origin_label = []
@@ -92,6 +96,7 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
+
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
     
@@ -105,6 +110,7 @@ class Dataloader(pl.LightningDataModule):
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
             # concat_entity = subject_entity+ '[SEP]' + object_entity
             concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'
+
             outputs = self.tokenizer(
                 concat_entity,
                 item['sentence'],
@@ -131,6 +137,7 @@ class Dataloader(pl.LightningDataModule):
         sentence = []
         subject_type = []
         object_type = []  
+
         
         for sub,obj,sent in zip(df['subject_entity'], df['object_entity'], df['sentence']):
             sub_word = sub[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
@@ -159,6 +166,7 @@ class Dataloader(pl.LightningDataModule):
                 'object_entity': object_entity,
                 'subject_type' : subject_type,
                 'object_type' : object_type,
+
                 'label': df['label'],
             })
             
@@ -172,6 +180,7 @@ class Dataloader(pl.LightningDataModule):
                 'object_entity': object_entity,
                 'subject_type' : subject_type,
                 'object_type' : object_type,
+
             })
             inputs = self.tokenizing(preprocessed_df)
             targets = []
@@ -205,6 +214,7 @@ class Dataloader(pl.LightningDataModule):
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size,num_workers=8)
+
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
