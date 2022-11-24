@@ -31,7 +31,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
-    parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
+    parser.add_argument('--criterion', default='focal_loss', type=str)  # cross_entropy, focal_loss
 
     parser.add_argument('--train_path', default='../dataset/train/new_train_split.csv')
     parser.add_argument('--dev_path', default='../dataset/train/new_val_split.csv')
