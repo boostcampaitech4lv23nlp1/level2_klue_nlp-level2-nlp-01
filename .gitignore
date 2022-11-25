@@ -6,3 +6,6 @@
 */lightning_logs
 */wandb
 /logs
+
+# Mac os
+.DS_Store
