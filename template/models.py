@@ -16,6 +16,30 @@ import metrics
 from dataloader import *
 import losses
 
+
+# https://huggingface.co/transformers/v3.5.1/_modules/transformers/modeling_bert.html
+class CustomEmbeddingLayer(torch.nn.Module):
+    def __init__(self, num_embeddings, embedding_dim):
+        super(CustomEmbeddingLayer, self).__init__()
+        
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+
+        self.token_type_embeddings = torch.nn.Embedding(self.num_embeddings, self.embedding_dim)  # nn.Embedding(1, 1024)
+        self.entity_embeddings = torch.nn.Embedding(self.num_embeddings+1, self.embedding_dim)    # nn.Embedding(2, 1024)
+    
+    def forward(self, concat_embeddings):
+        vector_size = concat_embeddings.size(-1) // 2
+        token_type_ids = concat_embeddings[:, :vector_size]
+        entity_ids = concat_embeddings[:, vector_size:]
+
+        token_type_embeddings = self.token_type_embeddings(token_type_ids)
+        
+        entity_embeddings = self.entity_embeddings(entity_ids)
+
+        return token_type_embeddings + entity_embeddings
+
+
 class Model(pl.LightningModule):
     def __init__(self, model_name:str, lr: float, pooling: bool, criterion: str) -> None:
         super().__init__()
@@ -24,7 +48,7 @@ class Model(pl.LightningModule):
         self.model_name = model_name
         self.lr = lr
         self.pooling = pooling
-        
+         
         self.labels_all = []
         self.preds_all = []
         self.probs_all = []
@@ -32,6 +56,7 @@ class Model(pl.LightningModule):
         self.model = transformers.AutoModel.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
         )
+        # self.model.embeddings.token_type_embeddings = CustomEmbeddingLayer(1, 1024)     # nn.Embedding(1, 1024)
 
         self.classification = torch.nn.Linear(1024, 30)
 
@@ -42,17 +67,30 @@ class Model(pl.LightningModule):
             self.criterion = losses.FocalLoss()
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
-    def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
+    def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor, max_token_lens: int) -> torch.Tensor:
         token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
         
+        token_embeddings = token_embeddings[:, :max_token_lens, :]
+        attention_mask = attention_mask[:, :max_token_lens]
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
+    def non_pad_length(self, vectors:torch.Tensor):
+        lens = []
+        for v in vectors:
+            cnt = 0
+            for token in v:
+                if token != 1: cnt += 1
+                else: break
+            lens.append(cnt)
+        return lens
+        
     def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
+        non_pad_lens = self.non_pad_length(x['input_ids'])
         model_outputs = self.model(**x)
         
         if self.pooling is True:
-            out = self.mean_pooling(model_outputs, x['attention_mask'])
+            out = self.mean_pooling(model_outputs, x['attention_mask'], max(non_pad_lens))
         else:
             out = model_outputs['last_hidden_state'][:, 0, :]
         out = self.classification(out)
@@ -133,15 +171,15 @@ class Model(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
-        lr_scheduler = {
-            'scheduler': OneCycleLR(
-                optimizer=optimizer,
-                max_lr=1e-5,
-                steps_per_epoch=912,
-                epochs=5,
-                pct_start=0.1
-            ),
-            'interval': 'step',
-            'frequency': 1
-        }
-        return [optimizer], [lr_scheduler]
+        # lr_scheduler = {
+        #     'scheduler': OneCycleLR(
+        #         optimizer=optimizer,
+        #         max_lr=3e-5,
+        #         steps_per_epoch=912,
+        #         epochs=5,
+        #         pct_start=0.1
+        #     ),
+        #     'interval': 'step',
+        #     'frequency': 1
+        # }
+        return optimizer

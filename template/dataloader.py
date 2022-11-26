@@ -78,10 +78,10 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        # if self.masking is True:
-        #     self.added_token_num += self.tokenizer.add_special_tokens({
-        #         'additional_special_tokens': self.special_tokens
-        #     })
+        if self.masking is True:
+            self.added_token_num += self.tokenizer.add_special_tokens({
+                'additional_special_tokens': self.special_tokens
+            })
 
     def num_to_label(self, label):
         origin_label = []
@@ -114,42 +114,64 @@ class Dataloader(pl.LightningDataModule):
         types = item['types']
 
         if self.masking is False:
-            return '[SEP]'.join([item[column] for column in self.using_columns])
+            return '[SEP]'.join([item[column] for column in self.using_columns]), None
         else:
-            '''
-            slide_size = 0
             # i = 0 -> subject entity
             # i = 1 -> object entity
+            
+            slide_size = 0
             so = ['S', 'O']
+            attaches = []
             for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
                 special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
                 attached = special_token_pair[0] + entity + special_token_pair[1]
+                attaches.append(attached)
                 sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
 
                 if ids[0] < ids[1]:
                     slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
-            '''
+            
+            # slide_size = 0
+            # so = ['@*', '#^']
+            # attaches = []
+            # for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
+            #     special_token_pair = f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}', f'{so[i][0]}'
+            #     attached = special_token_pair[0] + entity + special_token_pair[1]
+            #     attaches.append(attached)
 
-            slide_size = 0
-            so = ['@*', '#^']
-            for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-                special_token_pair = f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}', f'{so[i][0]}'
-                attached = special_token_pair[0] + entity + special_token_pair[1]
-                sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-
-                if ids[0] < ids[1]:
-                    slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
-
-        return sentence
+            #     sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+            #     if ids[0] < ids[1]:
+            #         slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
+        return sentence, attaches
+    
+    def add_entity_embeddings(self, outputs):
+        entity_embeddings = [
+            1 if self.tokenizer.decode(idx) in self.special_tokens else 0 
+            for idx in outputs['input_ids']
+        ]
+        outputs['token_type_ids'] += entity_embeddings
+        return outputs
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            concat_entity = '[SEP]'.join(item[column] for column in self.using_columns[:2]) + '[SEP]'
-            concat_entity += self.add_entity_token(item)
+            # 실험 1. [SEP]로이킴[SEP]김상우[SEP]가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
+            # concat_entity, _ = self.add_entity_token(item)
 
-            # "로이킴[SEP]김상우[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
+            # 실험 2. "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
+            concat_entity, _ = self.add_entity_token(item)
+
+            # 실험 3. @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
+            # sentence, attaches = self.add_entity_token(item)
+            # concat_entity = '[SEP]'.join(attached for attached in attaches) + '[SEP]'
+            # concat_entity += sentence
+
+            # 실험 4. 로이킴[SEP]김상우[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
+            # sentence, attaches = self.add_entity_token(item)
+            # concat_entity = '[SEP]'.join(item[columns] for columns in self.using_columns[:2]) + '[SEP]'
+            # concat_entity += sentence
+
             outputs = self.tokenizer(
                 concat_entity, 
                 add_special_tokens=True, 
@@ -157,6 +179,8 @@ class Dataloader(pl.LightningDataModule):
                 truncation=True,
                 max_length=256
             )
+
+            # outputs = self.add_entity_embeddings(outputs)
             data.append(outputs)
         return data
     
