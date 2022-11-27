@@ -30,13 +30,11 @@ class CustomEmbeddingLayer(torch.nn.Module):
     
     def forward(self, concat_embeddings):
         vector_size = concat_embeddings.size(-1) // 2
-        token_type_ids = concat_embeddings[:, :vector_size]
+        token_type_ids = concat_embeddings[:, :vector_size] # 모든 값이 0이기 때문에 embedding layer가 굳이 있어야 하나 생각
         entity_ids = concat_embeddings[:, vector_size:]
 
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
-        
         entity_embeddings = self.entity_embeddings(entity_ids)
-
         return token_type_embeddings + entity_embeddings
 
 
@@ -57,7 +55,6 @@ class Model(pl.LightningModule):
             pretrained_model_name_or_path=self.model_name,
         )
         # self.model.embeddings.token_type_embeddings = CustomEmbeddingLayer(1, 1024)     # nn.Embedding(1, 1024)
-
         self.classification = torch.nn.Linear(1024, 30)
 
         assert criterion in ['cross_entropy', 'focal_loss'], "criterion not in model"
@@ -72,6 +69,7 @@ class Model(pl.LightningModule):
         
         token_embeddings = token_embeddings[:, :max_token_lens, :]
         attention_mask = attention_mask[:, :max_token_lens]
+        
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 

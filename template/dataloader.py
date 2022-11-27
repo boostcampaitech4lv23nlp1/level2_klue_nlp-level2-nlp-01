@@ -145,10 +145,17 @@ class Dataloader(pl.LightningDataModule):
         return sentence, attaches
     
     def add_entity_embeddings(self, outputs):
-        entity_embeddings = [
-            1 if self.tokenizer.decode(idx) in self.special_tokens else 0 
-            for idx in outputs['input_ids']
-        ]
+        entity_embeddings = []
+        flag = 0
+        
+        for token_idx in outputs['input_ids']:
+            entity_embeddings.append(flag)
+            if self.tokenizer.decode(token_idx) in self.special_tokens:
+                if flag == 0:
+                    flag = 1
+                else: 
+                    flag = 0
+                    entity_embeddings[-1] = flag
         outputs['token_type_ids'] += entity_embeddings
         return outputs
 
@@ -156,11 +163,15 @@ class Dataloader(pl.LightningDataModule):
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            # 실험 1. [SEP]로이킴[SEP]김상우[SEP]가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
+            # 실험 1. 로이킴[SEP]김상우[SEP]가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
             # concat_entity, _ = self.add_entity_token(item)
 
             # 실험 2. "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
             concat_entity, _ = self.add_entity_token(item)
+
+            # 실험 2-1. [S:PER]로이킴[/S:PER],[O:PER]김상우[/O:PER]의 관계[SEP]가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
+            concat_entity, attaches = self.add_entity_token(item)
+            concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + concat_entity
 
             # 실험 3. @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
             # sentence, attaches = self.add_entity_token(item)
@@ -179,7 +190,8 @@ class Dataloader(pl.LightningDataModule):
                 truncation=True,
                 max_length=256
             )
-
+            
+            # entity_embedding -> entity 토큰 있는 위치마다 표시
             # outputs = self.add_entity_embeddings(outputs)
             data.append(outputs)
         return data
