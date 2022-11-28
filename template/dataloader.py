@@ -1,6 +1,7 @@
 import os
 import re
 import argparse
+import random
 import ast
 
 from typing import *
@@ -78,10 +79,10 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        if self.masking is True:
-            self.added_token_num += self.tokenizer.add_special_tokens({
-                'additional_special_tokens': self.special_tokens
-            })
+        # if self.masking is True:
+        #     self.added_token_num += self.tokenizer.add_special_tokens({
+        #         'additional_special_tokens': self.special_tokens
+        #     })
 
     def num_to_label(self, label):
         origin_label = []
@@ -159,10 +160,34 @@ class Dataloader(pl.LightningDataModule):
                     entity_embeddings[-1] = flag
         outputs['token_type_ids'] += entity_embeddings
         return outputs
+    
+    def add_aeda_sentence(self, sentence: str, ratio=0.1) -> str:
+        '''
+        s : subject word
+        o : object word
+        sentence : 원래 문장
+        '''
+        punctuations = ['.', ',', '!', '?', ';', ':']  # len(punctuations) : 6
+        count = random.randint(1, int(len(sentence) * ratio))
+    
+        subject_range = [i for i in range(*re.search(r'\@.*\@', sentence).span())]
+        object_range = [i for i in range(*re.search(r'\#.*\#', sentence).span())]
 
-    def tokenizing(self, df: pd.DataFrame) -> List[dict]:
+        sentence = list(sentence)
+        sentence_ids = [i for i in range(len(sentence)) if i not in subject_range+object_range]
+        for _ in range(count):
+            sentence_idx = sentence_ids.pop(random.randint(0, len(sentence_ids)-1))
+            
+            punc_idx = random.randint(0, len(punctuations)-1)
+            sentence[sentence_idx] += punctuations[punc_idx]
+        sentence = ''.join(sentence)
+        return sentence
+
+    def tokenizing(self, df: pd.DataFrame, augmented_num) -> List[dict]:
         data = []
-
+        
+        if augmented_num > 1:
+            print("augmentation start")
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
             # 실험 1. 로이킴[SEP]김상우[SEP]가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
             # concat_entity, _ = self.add_entity_token(item)
@@ -174,13 +199,19 @@ class Dataloader(pl.LightningDataModule):
             # concat_entity, attaches = self.add_entity_token(item)
             # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + concat_entity
 
-            # 실험 2-2. Data Augmentation
+            # 실험 2-2. Data Augmentation (AEDA)
+            # @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
+
             concat_entity, attaches = self.add_entity_token(item)
-            concat_entity_1 = f'{attaches[0]},{attaches[1]}건의 관계는?' + '[SEP]' + concat_entity
-            concat_entity_2 = f'{attaches[1]},{attaches[0]}간의 관계는?' + '[SEP]' + concat_entity
+
+            concat_entities = []
+            concat_entities.append(f'{attaches[0]},{attaches[1]}건의 관계는?' + '[SEP]' + concat_entity)
+
+            for _ in range(augmented_num-1):
+                concat_entities.append(self.add_aeda_sentence(concat_entity))
 
             concat_entity = []
-            for s in [concat_entity_1, concat_entity_2]:
+            for s in concat_entities:
                 concat_entity.append(s)
 
             # 실험 3. @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
@@ -217,7 +248,7 @@ class Dataloader(pl.LightningDataModule):
                     data.append(outputs)
         return data
     
-    def preprocessing(self, df: pd.DataFrame):
+    def preprocessing(self, df: pd.DataFrame, augmented_num=1):
         subject_entities = []
         object_entities = []
         ids = []
@@ -244,31 +275,28 @@ class Dataloader(pl.LightningDataModule):
                 'label': df['label'],
             })
             
-            inputs = self.tokenizing(preprocessed_df)
+            inputs = self.tokenizing(preprocessed_df, augmented_num)
 
             labels = []
-            augmented_num = len(inputs) // len(preprocessed_df) # 2
+            assert augmented_num == (len(inputs) // len(preprocessed_df)), 'augmentation error'
 
             for i in range(len(preprocessed_df)):
                 labels += [preprocessed_df['label'][i] for _ in range(augmented_num)]
 
             result_inputs = []
             result_labels = []
-            flag = 0
-            for x, y in zip(inputs, labels):
-                if y != 'no_relation':
-                    result_inputs.append(x); result_labels.append(y)
-                else:
-                    if flag == 0:
-                        result_inputs.append(x); result_labels.append(y)
-                        flag += 1
-                    else:
-                        flag = 0
+            for i in range(0, len(labels)-augmented_num, augmented_num):
+                result_inputs.append(inputs[i]); result_labels.append(labels[i])
+                if labels[i] != 'no_relation':
+                    for j in range(i+1, i+augmented_num):
+                        result_inputs.append(inputs[j]); result_labels.append(labels[j])
+
+            inputs = result_inputs
+            targets = self.label_to_num(pd.Series(result_labels))
+            # targets = self.label_to_num(preprocessed_df['label'])
             
-            targets = self.label_to_num(pd.Series(labels))
-            targets = self.label_to_num(preprocessed_df['label'])
-            
-        except:
+        except BaseException as e:
+            print(f"BaseException : {e}\n")
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
                 'sentence': df['sentence'],
@@ -277,7 +305,7 @@ class Dataloader(pl.LightningDataModule):
                 'ids': ids,
                 'types': types,
             })
-            inputs = self.tokenizing(preprocessed_df)
+            inputs = self.tokenizing(preprocessed_df, augmented_num)
             targets = []
 
         return inputs, targets
@@ -287,7 +315,7 @@ class Dataloader(pl.LightningDataModule):
             train_data = pd.read_csv(self.train_path)
             val_data = pd.read_csv(self.dev_path)
 
-            train_inputs, train_targets = self.preprocessing(train_data)
+            train_inputs, train_targets = self.preprocessing(train_data, augmented_num=2)
             val_inputs, val_targets = self.preprocessing(val_data)
 
             self.train_dataset = Dataset(train_inputs, train_targets)

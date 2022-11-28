@@ -35,6 +35,8 @@ class CustomEmbeddingLayer(torch.nn.Module):
 
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
         entity_embeddings = self.entity_embeddings(entity_ids)
+
+        
         return token_type_embeddings + entity_embeddings
 
 
@@ -67,6 +69,8 @@ class Model(pl.LightningModule):
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor, max_token_lens: int) -> torch.Tensor:
         token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
         
+        # batch : 32
+        # 32 개의 데이터, -> max len : 43
         token_embeddings = token_embeddings[:, :max_token_lens, :]
         attention_mask = attention_mask[:, :max_token_lens]
         
