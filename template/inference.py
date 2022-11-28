@@ -11,6 +11,14 @@ import torchmetrics
 import pytorch_lightning as pl
 
 from dataloader import *
+from models import *
+
+def weights_update(model, checkpoint):
+    model_dict = model.state_dict()
+    pretrained_dict = {k: v for k, v in checkpoint['state_dict'].items() if k in model_dict}
+    model_dict.update(pretrained_dict)
+    model.load_state_dict(model_dict)
+    return model
 
 
 if __name__ == '__main__':
@@ -23,10 +31,15 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--max_epoch', default=1, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
-    parser.add_argument('--train_path', default='/opt/ml/dataset/train/train_split.csv')
-    parser.add_argument('--dev_path', default='/opt/ml/dataset/train/val_split.csv')
-    parser.add_argument('--test_path', default='/opt/ml/dataset/train/val_split.csv')
-    parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
+
+    parser.add_argument('--masking', default=True, type=bool)
+    parser.add_argument('--pooling', default=False, type=bool)
+    parser.add_argument('--criterion', default='focal_loss', type=str)  # cross_entropy, focal_loss
+
+    parser.add_argument('--train_path', default='../dataset/train/new_train_split.csv')
+    parser.add_argument('--dev_path', default='../dataset/train/new_val_split.csv')
+    parser.add_argument('--test_path', default='../dataset/train/new_val_split.csv')
+    parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
 
     dataloader = Dataloader(
@@ -36,18 +49,38 @@ if __name__ == '__main__':
         args.dev_path,
         args.test_path,
         args.predict_path,
+        args.masking,
         shuffle=False
+    )
+
+
+    # model_name = re.sub(r'[/]', '-', args.model_name)
+    # model = torch.load(f'/opt/ml/{model_name}.pt')
+    model_name = '/opt/ml/models/rbert-focalloss/roberta-large+epoch=2+val_micro_f1=86.147.ckpt'
+    model = Model(
+        args.model_name, 
+        args.learning_rate,
+        args.pooling,
+        args.criterion
+    )
+
+    # tracking special tokens
+    model.model.resize_token_embeddings(
+            dataloader.tokenizer.vocab_size + dataloader.added_token_num
+        )
+
+    model = weights_update(
+        model, 
+        torch.load(model_name)
     )
 
     trainer = pl.Trainer(
         accelerator='gpu',
         devices=1,
         max_epochs=args.max_epoch, 
-        log_every_n_steps=1
+        log_every_n_steps=1,
+        num_sanity_val_steps=0
     )
-
-    model_name = re.sub(r'[/]', '-', args.model_name)
-    model = torch.load(f'/opt/ml/{model_name}.pt')
 
     results = trainer.predict(model=model, datamodule=dataloader)
     preds_all, probs_all = [], []

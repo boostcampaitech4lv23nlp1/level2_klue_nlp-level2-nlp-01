@@ -53,8 +53,8 @@ class Model(pl.LightningModule):
         self.classification = torch.nn.Linear(1024, 30)
 
         self.classification_for_rbert = torch.nn.Linear(1024*3, 30)
-        # self.criterion = torch.nn.CrossEntropyLoss()
-        self.criterion = losses.FocalLoss()
+        self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion = losses.FocalLoss()
         
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
@@ -78,7 +78,7 @@ class Model(pl.LightningModule):
         # hidden_unsqueeze = hidden_output.unsqueeze(1) # torch.Size([16, 1, 1024])
         # print(hidden_unsqueeze.size())
 
-        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1) # batch matrix multiplication
         avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
         return avg_vector
 

@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
-    parser.add_argument('--batch_size', default=16, type=int)
+    parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         args.criterion
     )
 
-    checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/models/",save_top_k=2, monitor="val_micro_f1",filename="roberta-large+{epoch}+{val_micro_f1:.3f}")
+    checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/models/", save_top_k=2, monitor="val_micro_f1", mode="max", filename="roberta-large+{epoch}+{val_micro_f1:.3f}")
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
     # tracking special tokens
