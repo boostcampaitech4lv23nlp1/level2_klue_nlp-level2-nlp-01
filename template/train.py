@@ -36,8 +36,8 @@ if __name__ == '__main__':
     parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
 
     parser.add_argument('--train_path', default='../dataset/train/removed_paren_train_split.csv')
-    parser.add_argument('--dev_path', default='../dataset/train/removed_paren_val_split.csv')
-    parser.add_argument('--test_path', default='../dataset/train/removed_paren_val_split.csv')
+    parser.add_argument('--dev_path', default='../dataset/train/val_split.csv')
+    parser.add_argument('--test_path', default='../dataset/train/val_split.csv')
     parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
