@@ -119,35 +119,36 @@ class Dataloader(pl.LightningDataModule):
             # i = 0 -> subject entity
             # i = 1 -> object entity
             
-            slide_size = 0
-            so = ['S', 'O']
-            attaches = []
-            for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-                special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
-                attached = special_token_pair[0] + entity + special_token_pair[1]
-                attaches.append(attached)
-                sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-
-                if ids[0] < ids[1]:
-                    slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
-            
             # slide_size = 0
-            # so = ['@*', '#^']
+            # so = ['S', 'O']
             # attaches = []
             # for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-            #     special_token_pair = f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}', f'{so[i][0]}'
+            #     special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
             #     attached = special_token_pair[0] + entity + special_token_pair[1]
             #     attaches.append(attached)
-
             #     sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+
             #     if ids[0] < ids[1]:
-            #         slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
+            #         slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
+            
+            slide_size = 0
+            so = ['@*', '#^']
+            attaches = []
+            for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
+                special_token_pair = f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}', f'{so[i][0]}'
+                attached = special_token_pair[0] + entity + special_token_pair[1]
+                attaches.append(attached)
+
+                sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+                if ids[0] < ids[1]:
+                    slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
         return sentence, attaches
     
     def add_entity_embeddings(self, outputs):
         entity_embeddings = []
         flag = 0
         
+        # 32001 ~ 
         for token_idx in outputs['input_ids']:
             entity_embeddings.append(flag)
             if self.tokenizer.decode(token_idx) in self.special_tokens:
@@ -167,33 +168,53 @@ class Dataloader(pl.LightningDataModule):
             # concat_entity, _ = self.add_entity_token(item)
 
             # 실험 2. "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-            concat_entity, _ = self.add_entity_token(item)
+            # concat_entity, _ = self.add_entity_token(item)
 
             # 실험 2-1. [S:PER]로이킴[/S:PER],[O:PER]김상우[/O:PER]의 관계[SEP]가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
+            # concat_entity, attaches = self.add_entity_token(item)
+            # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + concat_entity
+
+            # 실험 2-2. Data Augmentation
             concat_entity, attaches = self.add_entity_token(item)
-            concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + concat_entity
+            concat_entity_1 = f'{attaches[0]},{attaches[1]}건의 관계는?' + '[SEP]' + concat_entity
+            concat_entity_2 = f'{attaches[1]},{attaches[0]}간의 관계는?' + '[SEP]' + concat_entity
+
+            concat_entity = []
+            for s in [concat_entity_1, concat_entity_2]:
+                concat_entity.append(s)
 
             # 실험 3. @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
             # sentence, attaches = self.add_entity_token(item)
-            # concat_entity = '[SEP]'.join(attached for attached in attaches) + '[SEP]'
-            # concat_entity += sentence
+            # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + sentence
+            
 
             # 실험 4. 로이킴[SEP]김상우[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
             # sentence, attaches = self.add_entity_token(item)
             # concat_entity = '[SEP]'.join(item[columns] for columns in self.using_columns[:2]) + '[SEP]'
             # concat_entity += sentence
 
-            outputs = self.tokenizer(
-                concat_entity, 
-                add_special_tokens=True, 
-                padding='max_length',
-                truncation=True,
-                max_length=256
-            )
-            
-            # entity_embedding -> entity 토큰 있는 위치마다 표시
-            # outputs = self.add_entity_embeddings(outputs)
-            data.append(outputs)
+            assert isinstance(concat_entity, str) or isinstance(concat_entity, list), "str, list만 지원합니다."
+            if isinstance(concat_entity, str):
+                outputs = self.tokenizer(
+                    concat_entity, 
+                    add_special_tokens=True, 
+                    padding='max_length',
+                    truncation=True,
+                    max_length=256
+                )
+                # entity_embedding -> entity 토큰 있는 위치마다 표시
+                outputs = self.add_entity_embeddings(outputs)
+                data.append(outputs)
+            else:
+                for s in concat_entity:
+                    outputs = self.tokenizer(
+                        s, 
+                        add_special_tokens=True, 
+                        padding='max_length',
+                        truncation=True,
+                        max_length=256
+                    )
+                    data.append(outputs)
         return data
     
     def preprocessing(self, df: pd.DataFrame):
@@ -224,7 +245,29 @@ class Dataloader(pl.LightningDataModule):
             })
             
             inputs = self.tokenizing(preprocessed_df)
+
+            labels = []
+            augmented_num = len(inputs) // len(preprocessed_df) # 2
+
+            for i in range(len(preprocessed_df)):
+                labels += [preprocessed_df['label'][i] for _ in range(augmented_num)]
+
+            result_inputs = []
+            result_labels = []
+            flag = 0
+            for x, y in zip(inputs, labels):
+                if y != 'no_relation':
+                    result_inputs.append(x); result_labels.append(y)
+                else:
+                    if flag == 0:
+                        result_inputs.append(x); result_labels.append(y)
+                        flag += 1
+                    else:
+                        flag = 0
+            
+            targets = self.label_to_num(pd.Series(labels))
             targets = self.label_to_num(preprocessed_df['label'])
+            
         except:
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
@@ -262,10 +305,15 @@ class Dataloader(pl.LightningDataModule):
             self.predict_dataset = Dataset(predict_inputs, [])
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle)
+        return torch.utils.data.DataLoader(
+            self.train_dataset, 
+            batch_size=self.batch_size, 
+            shuffle=self.shuffle,
+            num_workers=8
+        )
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size)
+        return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=8)
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
