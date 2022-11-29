@@ -35,7 +35,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, augmented, shuffle):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -50,8 +50,9 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
-        self.masking = masking
-        self.shuffle = shuffle
+        self.masking: bool = masking
+        self.augmented: bool = augmented
+        self.shuffle: bool = shuffle
 
         self.added_token_num = 0
         self.using_columns = ['subject_entity', 'object_entity', 'sentence']
@@ -120,18 +121,6 @@ class Dataloader(pl.LightningDataModule):
             # i = 0 -> subject entity
             # i = 1 -> object entity
             
-            # slide_size = 0
-            # so = ['S', 'O']
-            # attaches = []
-            # for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-            #     special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
-            #     attached = special_token_pair[0] + entity + special_token_pair[1]
-            #     attaches.append(attached)
-            #     sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-
-            #     if ids[0] < ids[1]:
-            #         slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
-            
             slide_size = 0
             so = ['@*', '#^']
             attaches = []
@@ -168,7 +157,7 @@ class Dataloader(pl.LightningDataModule):
         sentence : 원래 문장
         '''
         punctuations = ['.', ',', '!', '?', ';', ':']  # len(punctuations) : 6
-        count = random.randint(1, int(len(sentence) * ratio))
+        count = int(len(sentence) * ratio)
     
         subject_range = [i for i in range(*re.search(r'\@.*\@', sentence).span())]
         object_range = [i for i in range(*re.search(r'\#.*\#', sentence).span())]
@@ -177,9 +166,7 @@ class Dataloader(pl.LightningDataModule):
         sentence_ids = [i for i in range(len(sentence)) if i not in subject_range+object_range]
         for _ in range(count):
             sentence_idx = sentence_ids.pop(random.randint(0, len(sentence_ids)-1))
-            
-            punc_idx = random.randint(0, len(punctuations)-1)
-            sentence[sentence_idx] += punctuations[punc_idx]
+            sentence[sentence_idx] += punctuations[random.randint(0, len(punctuations)-1)]
         sentence = ''.join(sentence)
         return sentence
 
@@ -188,41 +175,18 @@ class Dataloader(pl.LightningDataModule):
         
         if augmented_num > 1:
             print("augmentation start")
-        for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            # 실험 1. 로이킴[SEP]김상우[SEP]가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
-            # concat_entity, _ = self.add_entity_token(item)
-
-            # 실험 2. "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-            # concat_entity, _ = self.add_entity_token(item)
-
-            # 실험 2-1. [S:PER]로이킴[/S:PER],[O:PER]김상우[/O:PER]의 관계[SEP]가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
-            # concat_entity, attaches = self.add_entity_token(item)
-            # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + concat_entity
-
-            # 실험 2-2. Data Augmentation (AEDA)
-            # @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
-
+        for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):     
             concat_entity, attaches = self.add_entity_token(item)
 
             concat_entities = []
             concat_entities.append(f'{attaches[0]},{attaches[1]}건의 관계는?' + '[SEP]' + concat_entity)
 
             for _ in range(augmented_num-1):
-                concat_entities.append(self.add_aeda_sentence(concat_entity))
-
+                concat_entities.append(f'{attaches[0]},{attaches[1]}건의 관계는?' + '[SEP]' + self.add_aeda_sentence(concat_entity))
+ 
             concat_entity = []
             for s in concat_entities:
                 concat_entity.append(s)
-
-            # 실험 3. @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
-            # sentence, attaches = self.add_entity_token(item)
-            # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + sentence
-            
-
-            # 실험 4. 로이킴[SEP]김상우[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
-            # sentence, attaches = self.add_entity_token(item)
-            # concat_entity = '[SEP]'.join(item[columns] for columns in self.using_columns[:2]) + '[SEP]'
-            # concat_entity += sentence
 
             assert isinstance(concat_entity, str) or isinstance(concat_entity, list), "str, list만 지원합니다."
             if isinstance(concat_entity, str):
@@ -233,8 +197,6 @@ class Dataloader(pl.LightningDataModule):
                     truncation=True,
                     max_length=256
                 )
-                # entity_embedding -> entity 토큰 있는 위치마다 표시
-                outputs = self.add_entity_embeddings(outputs)
                 data.append(outputs)
             else:
                 for s in concat_entity:
@@ -274,7 +236,8 @@ class Dataloader(pl.LightningDataModule):
                 'types': types,
                 'label': df['label'],
             })
-            
+            if self.augmented is False:
+                augmented_num = 1
             inputs = self.tokenizing(preprocessed_df, augmented_num)
 
             labels = []
@@ -292,9 +255,8 @@ class Dataloader(pl.LightningDataModule):
                         result_inputs.append(inputs[j]); result_labels.append(labels[j])
 
             inputs = result_inputs
-            targets = self.label_to_num(pd.Series(result_labels))
-            # targets = self.label_to_num(preprocessed_df['label'])
-            
+            targets = self.label_to_num(pd.Series(result_labels))        
+               
         except BaseException as e:
             print(f"BaseException : {e}\n")
             preprocessed_df = pd.DataFrame({
