@@ -42,3 +42,13 @@ def klue_re_auprc(probs, labels):
 def re_accuracy_score(probs, labels):
 
     return accuracy_score(probs, labels)
+
+def simple_accuracy(preds, labels):
+    a = accuracy_score(labels, preds)
+    return a
+
+def compute_f1(preds, labels):
+    p =  precision_score(labels, preds)
+    r =  recall_score(labels, preds)
+    f1 = f1_score(labels, preds)
+    return {'precision': p, 'recall': r, 'f1': f1}
