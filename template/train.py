@@ -33,7 +33,7 @@ if __name__ == '__main__':
     
 
     parser.add_argument('--masking', default=True, type=bool)
-    parser.add_argument('--augmented', default=True, type=bool)
+    parser.add_argument('--augmented', default=False, type=bool)
     parser.add_argument('--pooling', default=False, type=bool)
     parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         anony = "must"
         print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    wandb.init(project="level2", name= "10. baseline + entity_marker punct(query) + aeda + bi-lstm")
+    wandb.init(project="level2", name= "9-1. baseline + entity_marker punct(query) + bi-lstm(2)")
     wandb_logger = WandbLogger('level2')
 
     dataloader = Dataloader(
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         log_every_n_steps=1,
         num_sanity_val_steps=0,
         callbacks=[checkpoint_callback],
-        logger=wandb_logger
+        # logger=wandb_logger
     )
 
     # Train part

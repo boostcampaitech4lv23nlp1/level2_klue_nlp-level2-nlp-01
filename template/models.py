@@ -57,6 +57,30 @@ class Model(pl.LightningModule):
             pretrained_model_name_or_path=self.model_name,
         )
         # self.model.embeddings.token_type_embeddings = CustomEmbeddingLayer(1, 1024)     # nn.Embedding(1, 1024)
+
+        self.device_ = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.embedding_size = 1024
+        self.hidden_size = 1024
+        self.num_layers = 2
+        self.num_dirs = 2
+        dropout = 0.1
+
+        self.lstm = torch.nn.LSTM(
+            input_size=self.embedding_size,
+            hidden_size=self.hidden_size,
+            num_layers=self.num_layers,
+            dropout=dropout,
+            batch_first=True,
+            bidirectional=True
+        )
+        self.dense_layer = torch.nn.Sequential(
+            torch.nn.Linear(self.hidden_size*self.num_dirs*2, self.hidden_size*self.num_dirs*2),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(p=dropout),
+            torch.nn.Linear(self.hidden_size*self.num_dirs*2, self.hidden_size),
+            torch.nn.ReLU(),
+        )
+
         self.classification = torch.nn.Linear(1024, 30)
 
         assert criterion in ['cross_entropy', 'focal_loss'], "criterion not in model"
@@ -66,35 +90,26 @@ class Model(pl.LightningModule):
             self.criterion = losses.FocalLoss()
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
-    def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor, max_token_lens: int) -> torch.Tensor:
+    def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
         token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
-        
-        # batch : 32
-        # 32 개의 데이터, -> max len : 43
-        token_embeddings = token_embeddings[:, :max_token_lens, :]
-        attention_mask = attention_mask[:, :max_token_lens]
         
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-
-    def non_pad_length(self, vectors:torch.Tensor):
-        lens = []
-        for v in vectors:
-            cnt = 0
-            for token in v:
-                if token != 1: cnt += 1
-                else: break
-            lens.append(cnt)
-        return lens
         
     def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
-        non_pad_lens = self.non_pad_length(x['input_ids'])
         model_outputs = self.model(**x)
         
         if self.pooling is True:
-            out = self.mean_pooling(model_outputs, x['attention_mask'], max(non_pad_lens))
+            out = self.mean_pooling(model_outputs, x['attention_mask'])
         else:
-            out = model_outputs['last_hidden_state'][:, 0, :]
+            # out = model_outputs['last_hidden_state'][:, 0, :]
+            out = model_outputs['last_hidden_state']
+            h_0 = torch.zeros(self.num_layers*self.num_dirs, out.size(0), self.hidden_size).to(self.device_)
+            c_0 = torch.zeros(self.num_layers*self.num_dirs, out.size(0), self.hidden_size).to(self.device_)
+            out, _ = self.lstm(out, (h_0, c_0))
+            out = torch.cat((out[:, 0, :], out[:, -1, :]), dim=-1)
+            out = self.dense_layer(out)
+
         out = self.classification(out)
         return out
 

@@ -34,6 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
     parser.add_argument('--masking', default=True, type=bool)
+    parser.add_argument('--augmented', default=False, type=bool)
     parser.add_argument('--pooling', default=False, type=bool)
     parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
 
@@ -51,6 +52,7 @@ if __name__ == '__main__':
         args.test_path,
         args.predict_path,
         args.masking,
+        args.augmented,
         shuffle=False
     )
 
@@ -65,9 +67,9 @@ if __name__ == '__main__':
         args.criterion
     )
 
-    main_model.model.resize_token_embeddings(
-            dataloader.tokenizer.vocab_size + dataloader.added_token_num
-    )
+    # main_model.model.resize_token_embeddings(
+    #         dataloader.tokenizer.vocab_size + dataloader.added_token_num
+    # )
 
     main_model = weights_update(
         main_model, 
