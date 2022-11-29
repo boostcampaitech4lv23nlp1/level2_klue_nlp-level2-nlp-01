@@ -34,8 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
     parser.add_argument('--masking', default=True, type=bool)
-    parser.add_argument('--augmented', default=False, type=bool)
-    parser.add_argument('--pooling', default=False, type=bool)
+    parser.add_argument('--augmented', default=True, type=bool)
+    parser.add_argument('--pooling', default=True, type=bool)
     parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
 
     parser.add_argument('--train_path', default='../dataset/train/new_train_split.csv')
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     )
 
     # model_name = re.sub(r'[/]', '-', args.model_name)
-    checkpoint_path = '/opt/models/' + 'roberta-large+epoch=4+val_micro_f1=86.181.ckpt'
+    checkpoint_path = '/opt/models/' + 'roberta-large+epoch=4+val_micro_f1=94.512.ckpt'
     
     # model = torch.load(f'/opt/models/{model_name}.pt')
     main_model = Model(
