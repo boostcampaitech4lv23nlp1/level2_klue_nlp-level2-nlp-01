@@ -1,5 +1,6 @@
 import argparse
 from copy import deepcopy
+import sys
 
 import torch
 import torch.nn as nn
@@ -96,6 +97,11 @@ class Model(pl.LightningModule):
         x, y = batch
 
         logits, hidden_state = self(x)
+        # print(logits)
+        # probs = torch.sigmoid(logits).squeeze(-1)
+        # print(probs)
+        # sys.exit()
+    
         if self.contrastive is True:
             con_loss = self.contrastive_loss(hidden_state, y.float())
             cross_loss = self.criterion(logits.view(-1), y.float())
@@ -132,7 +138,8 @@ class Model(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        logits,hidden_state = self(x) # logits : 32,30
+        logits,hidden_state = self(x)
+       
 
         probs = torch.sigmoid(logits).squeeze(-1)
         labels = y.cpu().detach().numpy().tolist()
