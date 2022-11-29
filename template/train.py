@@ -67,7 +67,7 @@ if __name__ == '__main__':
         model = Model(args.model_name, args.learning_rate, args.pooling, args.criterion)
         model_name = re.sub(r'[/]', '-', args.model_name)
 
-        checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/template/kfolds/",save_top_k=2,monitor="val_micro_f1",filename="{model_name}+kfold+{k}-{epoch}+{val_micro_f1:.3f}")
+        checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/template/kfolds/",save_top_k=2,mode="max",monitor="val_micro_f1",filename="{model_name}+kfold+{k}-{epoch}+{val_micro_f1:.3f}")
         # lr_monitor = LearningRateMonitor(logging_interval='step')
             
         trainer = pl.Trainer(
