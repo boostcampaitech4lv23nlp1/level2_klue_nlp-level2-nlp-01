@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # model_name = re.sub(r'[/]', '-', args.model_name)
     # model = torch.load(f'/opt/ml/{model_name}.pt')
-    model_name = '/opt/ml/models/rbert-focalloss/roberta-large+epoch=2+val_micro_f1=86.147.ckpt'
+    model_name = '/opt/ml/models/rbert-crossentropy-new_train/roberta-large+epoch=3+val_micro_f1=86.259.ckpt'
     model = Model(
         args.model_name, 
         args.learning_rate,

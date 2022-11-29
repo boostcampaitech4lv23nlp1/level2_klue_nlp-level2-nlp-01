@@ -50,6 +50,8 @@ class Model(pl.LightningModule):
 
         self.entity_fc_layer = FCLayer(input_dim = 1024, output_dim = 1024, dropout_rate = 0.1)
 
+        self.fc_layer = FCLayer(input_dim=1024*3, output_dim=1024, dropout_rate = 0.1)
+
         self.classification = torch.nn.Linear(1024, 30)
 
         self.classification_for_rbert = torch.nn.Linear(1024*3, 30)
@@ -114,9 +116,15 @@ class Model(pl.LightningModule):
 
         # concat
         concat_h = torch.cat([sentence_out, entity_s_out, entity_o_out], dim = -1) # torch.Size([16, 3072])
+
+        
         
         out = self.classification_for_rbert(concat_h)
+        
         #TODO: fc layer -> classification 실험
+        # concat_h = self.fc_layer(concat_h)
+        # out = self.classification(concat_h)
+        # 성능 하락...
         return out
     
     def CrossEntropywithLabelSmoothing(self,pred,target):
@@ -131,7 +139,7 @@ class Model(pl.LightningModule):
         x, y = batch
         
         logits = self(x)
-        loss = self.CrossEntropywithLabelSmoothing(logits, y)
+        loss = self.criterion(logits, y)
         self.log("train_loss", loss)
 
         return loss
@@ -139,7 +147,7 @@ class Model(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
-        loss = self.CrossEntropywithLabelSmoothing(logits, y)
+        loss = self.criterion(logits, y)
         self.log("val_loss", loss)
 
         labels = y.cpu().detach().numpy().tolist()
