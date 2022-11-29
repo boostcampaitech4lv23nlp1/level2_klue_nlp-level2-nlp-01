@@ -15,15 +15,12 @@ import pickle as pkl
 
 import metrics
 
+from sklearn.model_selection import StratifiedKFold
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, inputs: List[dict], labels: List[int]):
         self.inputs = inputs
         self.labels = labels
-        
-        # if labels :
-        #     self.labels = labels
-        # else:
-        #     self.labels = []
 
     def __getitem__(self, idx) -> dict:
         
@@ -36,22 +33,11 @@ class Dataset(torch.utils.data.Dataset):
             y = torch.tensor(-1)
         return X, y
 
-#         X = self.inputs[idx]
-#         for k,v in X.items():
-#             X[k] = torch.tensor(v, dtype=torch.long)
-
-#         if len(self.labels) == 0 :
-#             return X
-
-#         else:
-#             y = torch.tensor(self.labels[idx],dtype=torch.long)
-#             return X, y
-
     def __len__(self):
         return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, shuffle, k, n_folds, split_seed):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -66,6 +52,12 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
         self.shuffle = shuffle
+
+        self.masking = masking
+        self.shuffle = shuffle
+        self.k = k
+        self.n_folds = n_folds
+        self.split_speed = split_seed
 
         
         self.ner_type = {'ORG':'단체', 'PER':'사람', 'DAT':'날짜', 'LOC':'위치', 'POH':'기타', 'NOH':'수량'}
@@ -108,8 +100,8 @@ class Dataloader(pl.LightningDataModule):
             
             subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
-            # concat_entity = subject_entity+ '[SEP]' + object_entity
-            concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'
+            concat_entity = subject_entity+ '[SEP]' + object_entity
+            # concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'
 
             outputs = self.tokenizer(
                 concat_entity,
@@ -191,6 +183,20 @@ class Dataloader(pl.LightningDataModule):
         if stage == 'fit':
             train_data = pd.read_csv(self.train_path)
             val_data = pd.read_csv(self.dev_path)
+
+        ####################### << K-Fold >> #######################
+            total_data = pd.concat([train_data, val_data])
+            total_data.set_index('Unnamed: 0', inplace=True)
+            data_label = total_data['label']
+
+            skf = StratifiedKFold(n_splits=self.n_folds, shuffle=True, random_state=self.split_speed)
+
+            for n_fold, (_, v_idx) in enumerate(skf.split(total_data, total_data['label'])):
+                total_data.loc[v_idx, 'fold'] = n_fold
+            
+            train_data = total_data[total_data['fold'] != self.k]
+            val_data = total_data[total_data['fold'] == self.k]
+        ###############################################################
 
             train_inputs, train_targets = self.preprocessing(train_data)
             val_inputs, val_targets = self.preprocessing(val_data)
