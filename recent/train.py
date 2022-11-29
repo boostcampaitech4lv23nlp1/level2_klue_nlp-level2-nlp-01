@@ -47,6 +47,8 @@ if __name__ == '__main__':
                             args.test_path,
                             args.predict_path,
                             shuffle=True)
+
+    print(dataloader)
     
     model = Model(args.model_name, args.learning_rate)
 
@@ -59,7 +61,7 @@ if __name__ == '__main__':
                         log_every_n_steps=1,
                         precision=16,
                         logger = wandb_logger,
-                        callbacks=[lr_monitor]
+                        callbacks=[checkpoint_callback, lr_monitor]
                         )
 
     # Train part
