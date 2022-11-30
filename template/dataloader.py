@@ -42,10 +42,10 @@ class Dataloader(pl.LightningDataModule):
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
 
-        self.train_path = train_path
-        self.dev_path = dev_path
-        self.test_path = test_path
-        self.predict_path = predict_path
+        self.train_path = train_path # train
+        self.dev_path = dev_path # val
+        self.test_path = test_path # val
+        self.predict_path = predict_path # test
 
         self.train_dataset = None
         self.val_dataset = None
@@ -93,14 +93,12 @@ class Dataloader(pl.LightningDataModule):
         data = []
     
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            
-            # self.using_columns['subject_entity'] = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
-            # self.using_columns['object_entity'] = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
-            # concat_entity = '[SEP]'.join([val for column,val in self.using_columns.items()])
-            
+            sub_word = item['subject_entity']
+            obj_word = item['object_entity']
             subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
-            concat_entity = subject_entity+ '[SEP]' + object_entity
+            concat_entity = f'문장에서 @{obj_word}@와 #{sub_word}#건의 관계는?' # concat.v4
+            # concat_entity = subject_entity+ '[SEP]' + object_entity
             # concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'
 
             outputs = self.tokenizer(
@@ -109,7 +107,8 @@ class Dataloader(pl.LightningDataModule):
                 add_special_tokens=True, 
                 padding='max_length',
                 truncation=True,
-                max_length=256
+                max_length=256,
+                truncation=True
             )
             data.append(outputs)
         return data
@@ -124,55 +123,57 @@ class Dataloader(pl.LightningDataModule):
         return new_sentence
     
     def preprocessing(self, df: pd.DataFrame):
-        subject_entity = []
-        object_entity = []
+        subject_entities = []
+        object_entities = []
         sentence = []
         subject_type = []
         object_type = []  
-
         
         for sub,obj,sent in zip(df['subject_entity'], df['object_entity'], df['sentence']):
-            sub_word = sub[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
-            obj_word = obj[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
 
-            ss = int(sub.split("':")[2].split(',')[0].strip())   # subject_start
-            se = int(sub.split("':")[3].split(',')[0].strip())   # sub_end
-            os = int(obj.split("':")[2].split(',')[0].strip())   # obj_start
-            oe = int(obj.split("':")[3].split(',')[0].strip())   # obj_end
-            sub_type = sub[1:-1].split("':")[4].replace("'", '').strip() # sub_ner
-            obj_type = obj[1:-1].split("':")[4].replace("'", '').strip() #obj_ner
+            subject_entity = ast.literal_eval(sub)
+            object_entity = ast.literal_eval(obj)
+
+            sub_word = subject_entity['word']
+            obj_word = object_entity['word']
+
+            ss = subject_entity['start_idx']
+            se = subject_entity['end_idx']
+            os = object_entity['start_idx']
+            oe = object_entity['end_idx']
+            sub_type = subject_entity['type']
+            obj_type = object_entity['type']
 
             prepro_sent = self.add_entity_marker_punct(sent, sub_word, obj_word, sub_type, obj_type, ss, se, os, oe)
-            
-            subject_entity.append(sub_word)
-            object_entity.append(obj_word)
+
+            subject_entities.append(sub_word)
+            object_entities.append(obj_word)
             sentence.append(prepro_sent)
             subject_type.append(sub_type)
             object_type.append(obj_type)
-
+   
         try:
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
                 'sentence': sentence,
-                'subject_entity': subject_entity,
-                'object_entity': object_entity,
+                'subject_entity': subject_entities,
+                'object_entity': object_entities,
                 'subject_type' : subject_type,
                 'object_type' : object_type,
-
                 'label': df['label'],
             })
             
             inputs = self.tokenizing(preprocessed_df)
             targets = self.label_to_num(preprocessed_df['label'])
+
         except:
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
                 'sentence': sentence,
-                'subject_entity': subject_entity,
-                'object_entity': object_entity,
+                'subject_entity': subject_entities,
+                'object_entity': object_entities,
                 'subject_type' : subject_type,
                 'object_type' : object_type,
-
             })
             inputs = self.tokenizing(preprocessed_df)
             targets = []
@@ -213,7 +214,7 @@ class Dataloader(pl.LightningDataModule):
 
             predict_data.drop(columns=['label'], inplace=True)
             predict_inputs, predict_targets = self.preprocessing(predict_data)
-            self.predict_dataset = Dataset(predict_inputs, [])
+            self.predict_dataset = Dataset(predict_inputs, predict_targets)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle,num_workers=8)
