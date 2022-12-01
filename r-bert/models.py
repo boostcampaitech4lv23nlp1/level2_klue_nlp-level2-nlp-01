@@ -56,7 +56,6 @@ class Model(pl.LightningModule):
 
         self.classification_for_rbert = torch.nn.Linear(1024*3, 30)
         self.criterion = torch.nn.CrossEntropyLoss()
-        # self.criterion = losses.FocalLoss()
         
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
@@ -77,8 +76,6 @@ class Model(pl.LightningModule):
         e_mask_unsqueeze = e_mask.unsqueeze(1) # torch.Size([16, 1, 256])
         length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [16, 1]
 
-        # hidden_unsqueeze = hidden_output.unsqueeze(1) # torch.Size([16, 1, 1024])
-        # print(hidden_unsqueeze.size())
 
         sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1) # batch matrix multiplication
         avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
@@ -108,8 +105,6 @@ class Model(pl.LightningModule):
             
         else:
             sentence_out = model_outputs['last_hidden_state'][:, 0, :] # [CLS] torch.Size([16, 1024])
-            # out = pooled_output
-            # print(out==pooled_output) # False
 
         entity_s_out = self.entity_fc_layer(entity_s_h)
         entity_o_out = self.entity_fc_layer(entity_o_h)
@@ -117,18 +112,12 @@ class Model(pl.LightningModule):
         # concat
         concat_h = torch.cat([sentence_out, entity_s_out, entity_o_out], dim = -1) # torch.Size([16, 3072])
 
-        
-        
         out = self.classification_for_rbert(concat_h)
         
-        #TODO: fc layer -> classification 실험
-        # concat_h = self.fc_layer(concat_h)
-        # out = self.classification(concat_h)
-        # 성능 하락...
         return out
     
     def CrossEntropywithLabelSmoothing(self,pred,target):
-        K = pred.size(-1) # 전체 클래스의 갯수
+        K = pred.size(-1) 
         log_probs = F.log_softmax(pred, dim=-1)
         avg_log_probs = (-log_probs).sum(-1).mean()
         ce_loss = F.nll_loss(log_probs, target)
