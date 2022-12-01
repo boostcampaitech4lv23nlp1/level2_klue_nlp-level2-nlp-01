@@ -107,8 +107,7 @@ class Dataloader(pl.LightningDataModule):
                 add_special_tokens=True, 
                 padding='max_length',
                 truncation=True,
-                max_length=256,
-                truncation=True
+                max_length=256
             )
             data.append(outputs)
         return data
@@ -206,11 +205,12 @@ class Dataloader(pl.LightningDataModule):
             self.val_dataset = Dataset(val_inputs, val_targets)    
 
         else:
-            test_data = pd.read_csv(self.test_path)    
+            # test_data = pd.read_csv(self.test_path)    
             predict_data = pd.read_csv(self.predict_path)
 
-            test_inputs, test_targets = self.preprocessing(test_data)
-            self.test_dataset = Dataset(test_inputs, test_targets)
+            # test_inputs, test_targets = self.preprocessing(test_data)
+            # self.test_dataset = Dataset(test_inputs, test_targets)
+            self.test_dataset = self.val_dataset
 
             predict_data.drop(columns=['label'], inplace=True)
             predict_inputs, predict_targets = self.preprocessing(predict_data)
