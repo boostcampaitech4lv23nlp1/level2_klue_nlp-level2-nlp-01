@@ -95,4 +95,4 @@ if __name__ == '__main__':
         'probs': probs_all
     })
 
-    output.to_csv('output.csv', index=False)
+    output.to_csv('/opt/ml/models/rbert-crossentropy-new_train/output.csv', index=False)

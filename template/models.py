@@ -17,7 +17,7 @@ import metrics
 from dataloader import *
 
 class FCLayer(nn.Module):
-    def __init__(self, input_dim, output_dim, dropout_rate=0.0, use_activation=True):
+    def __init__(self, input_dim, output_dim, dropout_rate=0.1, use_activation=True):
         super(FCLayer, self).__init__()
         self.use_activation = use_activation
         self.dropout = nn.Dropout(dropout_rate)
