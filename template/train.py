@@ -29,8 +29,8 @@ if __name__ == '__main__':
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--max_epoch', default=5, type=int)
-    parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--max_epoch', default=3, type=int)
+    parser.add_argument('--learning_rate', default=3e-5, type=float)
     
     parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
@@ -40,9 +40,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_folds', default=5, type=bool)
     parser.add_argument('--split_seed', default=42, type=bool)
 
-    parser.add_argument('--train_path', default='/opt/ml/level2_klue_nlp-level2-nlp-01/dataset/train/new_train_split.csv')
-    parser.add_argument('--dev_path', default='/opt/ml/level2_klue_nlp-level2-nlp-01/dataset/train/new_val_split.csv')
-    parser.add_argument('--test_path', default='/opt/ml/level2_klue_nlp-level2-nlp-01/dataset/train/new_val_split.csv')
+    parser.add_argument('--train_path', default='/opt/ml/level2_klue_nlp-level2-nlp-01/dataset/train/removed_paren_train_split.csv')
+    parser.add_argument('--dev_path', default='/opt/ml/level2_klue_nlp-level2-nlp-01/dataset/train/removed_paren_val_split.csv')
+    parser.add_argument('--test_path', default='/opt/ml/level2_klue_nlp-level2-nlp-01/dataset/train/removed_paren_val_split.csv')
     parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
         checkpoint_callback = ModelCheckpoint(
             dirpath="/opt/ml/template/kfolds/",
-            save_top_k=2,
+            save_top_k=1,
             mode="max",
             monitor="val_micro_f1",
             filename="{model_name}+kfold+{k}-{epoch}+{val_micro_f1:.3f}"
@@ -96,37 +96,4 @@ if __name__ == '__main__':
         print('best model score: ', checkpoint_callback.best_model_score)
         print('best model path: ', checkpoint_callback.best_model_path)
         
-        
-        # Predict part
-        results = trainer.predict(model=model, datamodule=dataloader)
-        
-        preds_all, probs_all = [], []
-        for preds, probs in results:
-            preds_all.append(preds[0]); probs_all.append(str(list(probs)))
-
-        preds_all = dataloader.num_to_label(preds_all) 
-
-        output = pd.DataFrame({
-            'id': [idx for idx in range(len(preds_all))],
-            'pred_label': preds_all,
-            'probs': probs_all
-        })
-
-        output.to_csv(f'/opt/ml/template/results/kfold-output-{k}.csv', index=False)
-
-    # print('best K models: ',checkpoint_callback.best_k_models)
-    # print('Kth best model path: ',checkpoint_callback.kth_best_model_path)
-
-    # train_data = pd.read_csv(args.train_path)
-    # val_data = pd.read_csv(args.dev_path)
-    # total_data = pd.concat([train_data, val_data])
-    # data_label = total_data['label']
-
-    # scores = cross_val_score(model, total_data, data_label, scoring='f1', cv=args.n_folds)
-    # print('교차 검증별 정확도 : ', np.round(scores, args.n_folds))
-    # print('교차 검증 평균 :', np.round(np.mean(scores), args.n_folds))
-
-    print(results)
-    score = sum(results) / args.n_folds
-    print('K fold test score:', score)
         
