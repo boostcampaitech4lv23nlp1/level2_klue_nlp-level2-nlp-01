@@ -13,7 +13,6 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
-
 from dataloader import *
 from models import *
 
@@ -29,20 +28,16 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=5, type=int)
-    parser.add_argument('--learning_rate', default=1e-5, type=float)
-    
-    parser.add_argument('--masking', default=True, type=bool)
-    parser.add_argument('--pooling', default=False, type=bool)
-    parser.add_argument('--criterion', default='focal_loss', type=str)  # cross_entropy, focal_loss
+    parser.add_argument('--learning_rate', default=3e-5, type=float)
+    parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
+    parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
+    parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
+    parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
 
-    parser.add_argument('--train_path', default='../dataset/train/removed_paren_train_split2.csv')
-    parser.add_argument('--dev_path', default='../dataset/train/removed_paren_val_split2.csv')
-    parser.add_argument('--test_path', default='../dataset/train/removed_paren_val_split2.csv')
-    parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
     
     try:
-        wandb.login(key='4144d847761a14e5160041ccffc9eb7105a788dc')
+        wandb.login(key='3e00a171508ab88512c57afafb441f5ee2b4864b')
     except:
         anony = "must"
         print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
@@ -90,9 +85,6 @@ if __name__ == '__main__':
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
-    
-    # model_name = re.sub(r'[/]', '-', args.model_name)
 
-    # torch.save(model, f'/opt/models/{model_name}.pt')
-
+    print(checkpoint_callback.best_model_path)
     print(checkpoint_callback.best_model_path)
