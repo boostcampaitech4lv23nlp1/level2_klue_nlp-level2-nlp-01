@@ -1,6 +1,5 @@
 import re
 import argparse
-
 import torch
 import wandb
 import transformers
@@ -21,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--max_epoch', default=5, type=int)
+    parser.add_argument('--max_epoch', default=3, type=int)
     parser.add_argument('--learning_rate', default=3e-5, type=float)
     parser.add_argument('--train_path', default='/opt/ml/dataset/train/binary_train.csv')
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/binary_val.csv')
@@ -47,7 +46,7 @@ if __name__ == '__main__':
                             shuffle=True)
     
     model = Model(args.model_name, args.learning_rate)
-    # checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/template/models/",save_top_k=2, monitor="val_micro_f1",filename="roberta-large+{epoch}+{val_micro_f1:.3f}",mode='max')
+    checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/models/recent/multiple",save_top_k=1, monitor="val_compute_f1",filename="recent_binary+{epoch}+{val_compute_f1:.3f}",mode='max')
     lr_monitor = LearningRateMonitor(logging_interval='step')
     trainer = pl.Trainer(accelerator = 'gpu',
                         devices = 1,
@@ -55,14 +54,9 @@ if __name__ == '__main__':
                         log_every_n_steps=1,
                         precision=16,
                         logger = wandb_logger,
-                        callbacks=[lr_monitor]
+                        callbacks=[checkpoint_callback,lr_monitor]
                         )
 
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
-    
-
-    # model_name = re.sub(r'[/]', '-', args.model_name)
-
-    # torch.save(model, f'{model_name}.pt')
