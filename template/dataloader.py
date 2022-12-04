@@ -34,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, marker, shuffle):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -49,7 +49,7 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
-        self.masking = masking
+        self.marker = marker
         self.shuffle = shuffle
 
         self.added_token_num = 0
@@ -70,7 +70,7 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        if self.masking is True:
+        if self.marker is True:
             self.added_token_num += self.tokenizer.add_special_tokens({
                 'additional_special_tokens': self.special_tokens
             })
@@ -105,7 +105,7 @@ class Dataloader(pl.LightningDataModule):
         ids = item['ids']
         types = item['types']
 
-        if self.masking is False:
+        if self.marker is False:
             return '[SEP]'.join([item[column] for column in self.using_columns]), None
         else:
             # i = 0 -> subject entity, i = 1 -> object entity
