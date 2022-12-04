@@ -65,14 +65,6 @@ class Dataloader(pl.LightningDataModule):
             '[/O:NOH]', '[S:ORG]', 
             '[/S:ORG]', '[O:POH]'
         ]
-        self.ner_tokens = {
-            'ORG':'단체', 
-            'PER':'사람', 
-            'DAT':'날짜', 
-            'LOC':'위치', 
-            'POH':'기타', 
-            'NOH':'수량'
-        }
 
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
@@ -83,6 +75,7 @@ class Dataloader(pl.LightningDataModule):
                 'additional_special_tokens': self.special_tokens
             })
 
+
     def num_to_label(self, label):
         origin_label = []
         with open('dict_num_to_label.pkl', 'rb') as f:
@@ -90,6 +83,7 @@ class Dataloader(pl.LightningDataModule):
         for v in label:
             origin_label.append(dict_num_to_label[v])
         return origin_label
+
 
     def label_to_num(self, label: pd.Series) -> List[int]:
         num_label = []
@@ -100,14 +94,12 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
+
     def add_entity_token(self, item: pd.Series):
         '''
         ### Add Entity Token
         - "가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
             - "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-        
-        - "김영록 전라남도지사를 비롯해 윤병태 정무부지사, 직원들이 폭력예방 교육을 받고 있다."
-            - "#^사람^김영록# 전라남도지사를 비롯해 @*사람*윤병태@ 정무부지사, 직원들이 폭력예방 교육을 받고 있다."
         '''
         sentence = item['sentence']
         ids = item['ids']
@@ -116,64 +108,26 @@ class Dataloader(pl.LightningDataModule):
         if self.masking is False:
             return '[SEP]'.join([item[column] for column in self.using_columns]), None
         else:
-            # i = 0 -> subject entity
-            # i = 1 -> object entity
-            
-            # slide_size = 0
-            # so = ['S', 'O']
-            # attaches = []
-            # for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-            #     special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
-            #     attached = special_token_pair[0] + entity + special_token_pair[1]
-            #     attaches.append(attached)
-            #     sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-
-            #     if ids[0] < ids[1]:
-            #         slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
-            
+            # i = 0 -> subject entity, i = 1 -> object entity
             slide_size = 0
-            so = ['@*', '#^']
+            so = ['S', 'O']
             attaches = []
             for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-                special_token_pair = f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}', f'{so[i][0]}'
+                special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
                 attached = special_token_pair[0] + entity + special_token_pair[1]
                 attaches.append(attached)
-
                 sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
+
                 if ids[0] < ids[1]:
-                    slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
+                    slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
+            
         return sentence, attaches
-    
-    def add_entity_embeddings(self, outputs):
-        entity_embeddings = []
-        flag = 0
-        
-        # 32001 ~ 
-        for token_idx in outputs['input_ids']:
-            entity_embeddings.append(flag)
-            if self.tokenizer.decode(token_idx) in self.special_tokens:
-                if flag == 0:
-                    flag = 1
-                else: 
-                    flag = 0
-                    entity_embeddings[-1] = flag
-        outputs['token_type_ids'] += entity_embeddings
-        return outputs
+
 
     def tokenizing(self, df: pd.DataFrame) -> List[dict]:
         data = []
 
         for idx, item in tqdm(df.iterrows(), desc='tokenizing', total=len(df)):
-            # 실험 1. 로이킴[SEP]김상우[SEP]가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
-            # concat_entity, _ = self.add_entity_token(item)
-
-            # 실험 2. "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-            # concat_entity, _ = self.add_entity_token(item)
-
-            # 실험 2-1. [S:PER]로이킴[/S:PER],[O:PER]김상우[/O:PER]의 관계[SEP]가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
-            # concat_entity, attaches = self.add_entity_token(item)
-            # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + concat_entity
-
             # 실험 2-2. Data Augmentation
             concat_entity, attaches = self.add_entity_token(item)
             concat_entity_1 = f'{attaches[0]},{attaches[1]}건의 관계는?' + '[SEP]' + concat_entity
@@ -182,16 +136,6 @@ class Dataloader(pl.LightningDataModule):
             concat_entity = []
             for s in [concat_entity_1, concat_entity_2]:
                 concat_entity.append(s)
-
-            # 실험 3. @*사람*로이킴@[SEP]#^사람^김상우#[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.            
-            # sentence, attaches = self.add_entity_token(item)
-            # concat_entity = f'{attaches[0]},{attaches[1]}의 관계' + '[SEP]' + sentence
-            
-
-            # 실험 4. 로이킴[SEP]김상우[SEP]가수 @*사람*로이킴@(#^사람^김상우#·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다.
-            # sentence, attaches = self.add_entity_token(item)
-            # concat_entity = '[SEP]'.join(item[columns] for columns in self.using_columns[:2]) + '[SEP]'
-            # concat_entity += sentence
 
             assert isinstance(concat_entity, str) or isinstance(concat_entity, list), "str, list만 지원합니다."
             if isinstance(concat_entity, str):
@@ -202,8 +146,6 @@ class Dataloader(pl.LightningDataModule):
                     truncation=True,
                     max_length=256
                 )
-                # entity_embedding -> entity 토큰 있는 위치마다 표시
-                outputs = self.add_entity_embeddings(outputs)
                 data.append(outputs)
             else:
                 for s in concat_entity:
@@ -217,6 +159,7 @@ class Dataloader(pl.LightningDataModule):
                     data.append(outputs)
         return data
     
+
     def preprocessing(self, df: pd.DataFrame):
         subject_entities = []
         object_entities = []
@@ -282,6 +225,7 @@ class Dataloader(pl.LightningDataModule):
 
         return inputs, targets
 
+
     def setup(self, stage='fit'):
         if stage == 'fit':
             train_data = pd.read_csv(self.train_path)
@@ -304,6 +248,7 @@ class Dataloader(pl.LightningDataModule):
             predict_inputs, predict_targets = self.preprocessing(predict_data)
             self.predict_dataset = Dataset(predict_inputs, [])
 
+
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
             self.train_dataset, 
@@ -312,11 +257,14 @@ class Dataloader(pl.LightningDataModule):
             num_workers=8
         )
 
+
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=8)
 
+
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
+
 
     def predict_dataloader(self):
         return torch.utils.data.DataLoader(self.predict_dataset, batch_size=self.batch_size)
