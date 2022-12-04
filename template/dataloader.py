@@ -34,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.inputs)
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, marker, shuffle):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -49,7 +49,7 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
-        self.masking = masking
+        self.marker = marker
         self.shuffle = shuffle
 
         self.added_token_num = 0
@@ -67,11 +67,7 @@ class Dataloader(pl.LightningDataModule):
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
-        
-        # if self.masking is True:
-        #     self.added_token_num += self.tokenizer.add_special_tokens({
-        #         'additional_special_tokens': self.special_tokens
-        #     })
+
 
     def num_to_label(self, label):
         origin_label = []
@@ -80,6 +76,7 @@ class Dataloader(pl.LightningDataModule):
         for v in label:
             origin_label.append(dict_num_to_label[v])
         return origin_label
+
 
     def label_to_num(self, label: pd.Series) -> List[int]:
         num_label = []
@@ -90,12 +87,10 @@ class Dataloader(pl.LightningDataModule):
         
         return num_label
 
+
     def add_entity_token(self, item: pd.Series):
         '''
         ### Add Entity Token
-        - "가수 로이킴(김상우·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-            - "가수 [S:PER]로이킴[/S:PER]([O:PER]김상우[/O:PER]·26)의 음란물 유포 혐의 '비하인드 스토리'가 공개됐다."
-        
         - "김영록 전라남도지사를 비롯해 윤병태 정무부지사, 직원들이 폭력예방 교육을 받고 있다."
             - "#^사람^김영록# 전라남도지사를 비롯해 @*사람*윤병태@ 정무부지사, 직원들이 폭력예방 교육을 받고 있다."
         '''
@@ -103,7 +98,7 @@ class Dataloader(pl.LightningDataModule):
         ids = item['ids']
         types = item['types']
 
-        if self.masking is False:
+        if self.marker is False:
             return '[SEP]'.join([item[column] for column in self.using_columns])
         else:
             slide_size = 0
