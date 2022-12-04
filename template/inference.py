@@ -5,13 +5,10 @@ from models import Model
 import torch
 import pandas as pd
 from tqdm.auto import tqdm
-
 import transformers
 import torchmetrics
 import pytorch_lightning as pl
-
 import matplotlib.pyplot as plt
-
 from dataloader import *
 
 
@@ -24,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--max_epoch', default=1, type=int)
-    parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--learning_rate', default=3e-5, type=float)
     parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
     parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
@@ -49,13 +46,9 @@ if __name__ == '__main__':
         log_every_n_steps=1
     )
 
-    model_name = re.sub(r'[/]', '-', args.model_name)
-    model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/template/models/roberta-large+epoch=1+val_micro_f1=87.629.ckpt')
-    
-    # model = torch.load(f'{model_name}.pt')
+    model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/models/recent/multiple/recent+epoch=2+val_micro_f1=91.767.ckpt')
 
-
-    results = trainer.predict(model=model, datamodule=dataloader)
+    results = trainer.predict(model = model, datamodule=dataloader)
     
     preds_all, probs_all = [], []
     for preds, probs in results:
