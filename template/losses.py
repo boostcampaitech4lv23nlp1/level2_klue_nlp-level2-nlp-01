@@ -1,6 +1,5 @@
-from typing import Optional, Sequence
-
-
+from typing import Optional
+from typing import Sequence
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,8 +13,8 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
         self.logits = logits
         self.reduce = reduce
-
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
+
 
     # reference : https://discuss.pytorch.org/t/focal-loss-for-imbalanced-multi-class-classification-in-pytorch/61289
     def forward(self, inputs, targets):
