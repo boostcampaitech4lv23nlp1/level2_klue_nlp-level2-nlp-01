@@ -10,21 +10,16 @@ import transformers
 from tqdm.auto import tqdm
 import pytorch_lightning as pl
 import pickle as pkl
-
 import metrics
+
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, inputs: List[dict], labels: List[int]):
         self.inputs = inputs
         self.labels = labels
         
-        # if labels :
-        #     self.labels = labels
-        # else:
-        #     self.labels = []
 
     def __getitem__(self, idx) -> dict:
-        
         X = {key: torch.tensor(value) for key, value in self.inputs[idx].items()}
 
         # prediction은 label이 없음
@@ -34,19 +29,10 @@ class Dataset(torch.utils.data.Dataset):
             y = torch.tensor(-1)
         return X, y
 
-#         X = self.inputs[idx]
-#         for k,v in X.items():
-#             X[k] = torch.tensor(v, dtype=torch.long)
-
-#         if len(self.labels) == 0 :
-#             return X
-
-#         else:
-#             y = torch.tensor(self.labels[idx],dtype=torch.long)
-#             return X, y
 
     def __len__(self):
         return len(self.inputs)
+
 
 class Dataloader(pl.LightningDataModule):
     def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, shuffle):
@@ -71,6 +57,7 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
 
+
     def num_to_label(self, label):
         origin_label = []
         with open('dict_num_to_label.pkl', 'rb') as f:
@@ -79,14 +66,15 @@ class Dataloader(pl.LightningDataModule):
             origin_label.append(dict_num_to_label[v])
         return origin_label
 
+
     def label_to_num(self, label: pd.Series) -> List[int]:
         num_label = []
         with open('dict_label_to_num.pkl', 'rb') as f:
             dict_label_to_num = pkl.load(f)
         for v in label:
             num_label.append(dict_label_to_num[v])
-        
         return num_label
+
 
     def tokenizing(self, df: pd.DataFrame):
         data = []
@@ -96,47 +84,17 @@ class Dataloader(pl.LightningDataModule):
             obj_word = item['object_entity']
             subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
-            # concat_entity = sub_word + '[SEP]' + obj_word                 # baseline
+            # concat_entity = sub_word + '[SEP]' + obj_word               # baseline
+            # concat_entity = '*' + self.ner_type[item['subject_type']]+ '*'+ '[SEP]' + '^'+ self.ner_type[item['object_type']] +'^'
             # concat_entity = subject_entity + '[SEP]' + object_entity      # baseline(+ typed entity marker)
             # concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'   # concat.v1
-            # concat_entity = f'문장에서 @{obj_word}@와 #{sub_word}#의 관계를 고르세요.'  # concat.v2
+            concat_entity = f'문장에서 @{obj_word}@와 #{sub_word}#의 관계를 고르세요.'  # concat.v2
             # concat_entity = f'문장에서 {subject_entity}와 {object_entity}의 관계를 고르세요.' # concat.v3
-            # concat_entity = f"이 문장에서 [{obj_word}]은 [{sub_word}]의 [{self.ner_type[item['object_type']]}]이다."
-            concat_entity = f'문장에서 @{obj_word}@와 #{sub_word}#건의 관계는?'
-            ###########################################################################
-#             concat_entity_1 = f'문장에서 @{obj_word}@와 #{sub_word}#건의 관계는?'
-#             concat_entity_2 = f'문장에서 @{sub_word}@와 #{obj_word}#건의 관계는?'
-#             concat_entity = []
-#             for s in [concat_entity_1, concat_entity_2]:
-#                 concat_entity.append(s)
-
-#             assert isinstance(concat_entity, str) or isinstance(concat_entity, list), "str, list만 지원합니다."
-#             if isinstance(concat_entity, str):
-#                 outputs = self.tokenizer(
-#                     concat_entity, 
-#                     add_special_tokens=True, 
-#                     padding='max_length',
-#                     truncation=True,
-#                     max_length=256
-#                 )
-#                 # entity_embedding -> entity 토큰 있는 위치마다 표시
-#                 outputs = self.add_entity_embeddings(outputs)
-#                 data.append(outputs)
-#             else:
-#                 for s in concat_entity:
-#                     outputs = self.tokenizer(
-#                         s, 
-#                         add_special_tokens=True, 
-#                         padding='max_length',
-#                         truncation=True,
-#                         max_length=256
-#                     )
-#                     data.append(outputs)
-            #######################################################################
+            # concat_entity = f'문장에서 @{obj_word}@와 #{sub_word}#건의 관계는?'
 
             outputs = self.tokenizer(
-                concat_entity,
                 item['sentence'],
+                concat_entity,
                 add_special_tokens=True, 
                 padding='max_length',
                 max_length=256,
@@ -145,15 +103,15 @@ class Dataloader(pl.LightningDataModule):
             data.append(outputs)
         return data
     
+
     def add_entity_marker_punct(self, sentence, sub_word, obj_word, sub_type, obj_type, ss, se, os, oe):
         if ss < os:
             new_sentence = sentence[:ss] + '@'+ '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 : os] + '#' + '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 :]
         else: 
-            new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]
-            #new_sentence = sentence[:os] + '@'+ '*' + self.ner_type[obj_type] + '*' + obj_word + '@' + sentence[oe + 1 : ss] + '#' + '^' + self.ner_type[sub_type] + '^' + sub_word + '#' + sentence[se + 1 :]
-    
+            new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]    
         return new_sentence
     
+
     def preprocessing(self, df: pd.DataFrame):
         subject_entities = []
         object_entities = []
@@ -198,31 +156,6 @@ class Dataloader(pl.LightningDataModule):
             inputs = self.tokenizing(preprocessed_df)
             targets = preprocessed_df['label']
 
-
-            ##################################################################
-#             inputs = self.tokenizing(preprocessed_df)
-
-#             labels = []
-#             augmented_num = len(inputs) // len(preprocessed_df) # 2
-
-#             for i in range(len(preprocessed_df)):
-#                 labels += [preprocessed_df['label'][i] for _ in range(augmented_num)]
-
-#             result_inputs = []
-#             result_labels = []
-#             flag = 0
-#             for x, y in zip(inputs, labels):
-#                 if y != 'no_relation':
-#                     result_inputs.append(x); result_labels.append(y)
-#                 else:
-#                     if flag == 0:
-#                         result_inputs.append(x); result_labels.append(y)
-#                         flag += 1
-#                     else:
-#                         flag = 0
-#             inputs = result_inputs
-#             targets = self.label_to_num(pd.Series(result_labels))
-            #######################################################################
         except:
             preprocessed_df = pd.DataFrame({
                 'id': df['id'], 
@@ -236,6 +169,7 @@ class Dataloader(pl.LightningDataModule):
             targets = []
     
         return inputs, targets
+
 
     def setup(self, stage='fit'):
         if stage == 'fit':
@@ -259,14 +193,18 @@ class Dataloader(pl.LightningDataModule):
             predict_inputs, predict_targets = self.preprocessing(predict_data)
             self.predict_dataset = Dataset(predict_inputs, predict_targets)
 
+
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle,num_workers=8)
+
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size,num_workers=8)
 
+
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
+
 
     def predict_dataloader(self):
         return torch.utils.data.DataLoader(self.predict_dataset, batch_size= 1)
