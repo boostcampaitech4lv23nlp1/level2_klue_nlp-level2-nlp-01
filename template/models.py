@@ -15,31 +15,6 @@ import losses
 import metrics
 from dataloader import *
 import losses
-
-
-# https://huggingface.co/transformers/v3.5.1/_modules/transformers/modeling_bert.html
-class CustomEmbeddingLayer(torch.nn.Module):
-    def __init__(self, num_embeddings, embedding_dim):
-        super(CustomEmbeddingLayer, self).__init__()
-        
-        self.num_embeddings = num_embeddings
-        self.embedding_dim = embedding_dim
-
-        self.token_type_embeddings = torch.nn.Embedding(self.num_embeddings, self.embedding_dim)  # nn.Embedding(1, 1024)
-        self.entity_embeddings = torch.nn.Embedding(self.num_embeddings+1, self.embedding_dim)    # nn.Embedding(2, 1024)
-    
-    def forward(self, concat_embeddings):
-        vector_size = concat_embeddings.size(-1) // 2
-        token_type_ids = concat_embeddings[:, :vector_size] # 모든 값이 0이기 때문에 embedding layer가 굳이 있어야 하나 생각
-        entity_ids = concat_embeddings[:, vector_size:]
-
-        token_type_embeddings = self.token_type_embeddings(token_type_ids)
-        entity_embeddings = self.entity_embeddings(entity_ids)
-
-        
-        return token_type_embeddings + entity_embeddings
-
-
 class Model(pl.LightningModule):
     def __init__(self, model_name:str, lr: float, pooling: bool, criterion: str) -> None:
         super().__init__()
@@ -56,7 +31,6 @@ class Model(pl.LightningModule):
         self.model = transformers.AutoModel.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
         )
-        # self.model.embeddings.token_type_embeddings = CustomEmbeddingLayer(1, 1024)     # nn.Embedding(1, 1024)
 
         self.device_ = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.embedding_size = 1024
@@ -89,13 +63,15 @@ class Model(pl.LightningModule):
         elif criterion == 'focal_loss':
             self.criterion = losses.FocalLoss()
 
+
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
-        token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
-        
+        token_embeddings = model_output['last_hidden_state']
+
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         
+
     def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
         model_outputs = self.model(**x)
         
@@ -113,6 +89,7 @@ class Model(pl.LightningModule):
         out = self.classification(out)
         return out
 
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
@@ -120,6 +97,7 @@ class Model(pl.LightningModule):
         self.log("train_loss", loss)
 
         return loss
+
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -136,6 +114,7 @@ class Model(pl.LightningModule):
         self.preds_all += preds
         return loss
 
+
     def validation_epoch_end(self, output) -> None:
         labels = np.asarray(self.labels_all)
         probs = np.asarray(self.probs_all)
@@ -150,6 +129,7 @@ class Model(pl.LightningModule):
         self.preds_all.clear()
         return
 
+
     def test_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
@@ -161,6 +141,7 @@ class Model(pl.LightningModule):
         self.labels_all += labels
         self.probs_all += probs
         self.preds_all += preds
+
 
     def test_epoch_end(self, outputs):
         labels = np.asarray(self.labels_all)
@@ -176,6 +157,7 @@ class Model(pl.LightningModule):
         self.preds_all.clear()
         return
 
+
     def predict_step(self, batch, batch_idx):
         x, _ = batch
         logits = self(x)
@@ -186,17 +168,8 @@ class Model(pl.LightningModule):
 
         return preds, probs
 
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
-        # lr_scheduler = {
-        #     'scheduler': OneCycleLR(
-        #         optimizer=optimizer,
-        #         max_lr=3e-5,
-        #         steps_per_epoch=912,
-        #         epochs=5,
-        #         pct_start=0.1
-        #     ),
-        #     'interval': 'step',
-        #     'frequency': 1
-        # }
+        
         return optimizer
