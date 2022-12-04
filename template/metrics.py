@@ -1,12 +1,13 @@
 import os
-
 import torch
 import sklearn
 import numpy as np
 import pandas as pd
 import pickle as pickle
-from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
+from sklearn.metrics import accuracy_score 
+from sklearn.metrics import recall_score 
+from sklearn.metrics import precision_score
+from sklearn.metrics import f1_score
 
 
 def klue_re_micro_f1(preds, labels):
@@ -25,27 +26,29 @@ def klue_re_micro_f1(preds, labels):
     no_relation_label_idx = label_list.index("no_relation")
     label_indices = list(range(len(label_list)))
     label_indices.remove(no_relation_label_idx)
-    
     return sklearn.metrics.f1_score(labels, preds, average="micro", labels=label_indices) * 100.0
+
 
 def klue_re_auprc(probs, labels):
     """KLUE-RE AUPRC (with no_relation)"""
-    labels = np.eye(30)[labels]
-    score = np.zeros((30,))
-    for c in range(30):
+    labels = np.eye(29)[labels]
+    score = np.zeros((29,))
+    for c in range(29):
         targets_c = labels.take([c], axis=1).ravel()
         preds_c = probs.take([c], axis=1).ravel()
         precision, recall, _ = sklearn.metrics.precision_recall_curve(targets_c, preds_c)
         score[c] = sklearn.metrics.auc(recall, precision)
     return np.average(score) * 100.0
 
-def re_accuracy_score(probs, labels):
 
+def re_accuracy_score(probs, labels):
     return accuracy_score(probs, labels)
+
 
 def simple_accuracy(preds, labels):
     a = accuracy_score(labels, preds)
     return a
+
 
 def compute_f1(preds, labels):
     p =  precision_score(labels, preds)
