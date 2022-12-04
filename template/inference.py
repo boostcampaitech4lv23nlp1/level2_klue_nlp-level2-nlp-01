@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
     parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
     parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
-    parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
+    parser.add_argument('--predict_path', default='/opt/ml/dataset/train/new_val_split.csv')
     args = parser.parse_args(args=[])
 
     dataloader = Dataloader(
@@ -48,12 +48,10 @@ if __name__ == '__main__':
     )
 
     model_name = re.sub(r'[/]', '-', args.model_name)
-    model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/template/models/roberta-large+epoch=2+val_micro_f1=87.099.ckpt',strict=False)
-    
-    # model = torch.load(f'{model_name}.pt')
+    model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/template/models/roberta-large+epoch=1+val_micro_f1=87.629.ckpt',strict=False)
 
     results = trainer.predict(model=model, datamodule=dataloader)
-    
+
     preds_all, probs_all = [], []
     for preds, probs in results:
         preds_all.append(preds[0]); probs_all.append(str(list(probs)))
