@@ -1,6 +1,4 @@
 import argparse
-from copy import deepcopy
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -11,11 +9,11 @@ from tqdm.auto import tqdm
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import OneCycleLR
-from transformers import get_cosine_schedule_with_warmup
 from sklearn.metrics.pairwise import cosine_similarity
 import losses
 import metrics
 from dataloader_binary import *
+
 
 class Model(pl.LightningModule):
     def __init__(self, model_name:str, lr: float) -> None:
@@ -27,35 +25,38 @@ class Model(pl.LightningModule):
         self.pooling = True
         self.contrastive = True
         self.epsilon = 0.1
+        self.labels_all = []
+        self.preds_all = []
+        self.probs_all = []
 
         self.model = transformers.AutoModel.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
         )
-        
-        # self.blm = transformers.AutoForSequenceClassification.from_pretrained(
-        #     pretrained_model_name_or_path = self.model_name, num_labels = 1)
-        
         self.classification = torch.nn.Linear(1024,1)
+        self.dropout = torch.nn.Dropout(p=0.1)
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
         
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
         token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
-        
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+
 
     def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
         model_outputs = self.model(**x)    #model_outputs -> (32,256,1024)
         
         if self.pooling is True:
-            hidden_state = self.mean_pooling(model_outputs, x['attention_mask'])
+            hidden_states = self.mean_pooling(model_outputs, x['attention_mask'])
         else:
-            hidden_state = model_outputs['last_hidden_state'][:, 0, :] #(32,1,1024)
+            hidden_states = model_outputs['last_hidden_state'][:, 0, :]
+        
+        hidden_state = self.dropout(hidden_states)
         out = self.classification(hidden_state)
 
-        return out, hidden_state
+        return out, hidden_states
+
 
     def contrastive_loss(self, embedding, label, temp=0.3):
         """calculate the contrastive loss
@@ -94,7 +95,6 @@ class Model(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-
         logits, hidden_state = self(x)
         if self.contrastive is True:
             con_loss = self.contrastive_loss(hidden_state, y.float())
@@ -109,7 +109,6 @@ class Model(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-
         logits, hidden_state = self(x)
         if self.contrastive is True:
             con_loss = self.contrastive_loss(hidden_state, y.float())
@@ -123,46 +122,42 @@ class Model(pl.LightningModule):
         probs = torch.sigmoid(logits).squeeze(-1)
         labels = y.cpu().detach().numpy().tolist()
         preds = []
-        preds.extend( probs.ge(0.5).int().tolist())
-        
-        self.log('compute_f1', metrics.compute_f1(preds, labels))
-        self.log('accuracy', metrics.simple_accuracy(preds, labels))
+        preds.extend(probs.ge(0.5).int().tolist())
+    
+        self.log('val_compute_f1', metrics.compute_f1(preds, labels)['f1'])
+        self.log('val_accuracy', metrics.simple_accuracy(preds, labels))
         
         return loss
 
+
     def test_step(self, batch, batch_idx):
         x, y = batch
-        logits,hidden_state = self(x) # logits : 32,30
-
+        logits, hidden_state = self(x)
         probs = torch.sigmoid(logits).squeeze(-1)
         labels = y.cpu().detach().numpy().tolist()
         preds = []
-        preds.extend( probs.ge(0.5).int().tolist())
+        preds.extend(probs.ge(0.5).int().tolist())
         
-        self.log('compute_f1', metrics.compute_f1(preds, labels))
-        self.log('accuracy', metrics.simple_accuracy(preds, labels))
+        self.log('test_compute_f1', metrics.compute_f1(preds, labels)['f1'])
+        self.log('test_accuracy', metrics.simple_accuracy(preds, labels))
         
         return 
 
+
     def predict_step(self, batch, batch_idx):
         x, y = batch
-        logits,hidden_state = self(x)
+        logits, hidden_state = self(x) 
+        probs = torch.sigmoid(logits).squeeze(-1)
+        preds = []
+        preds.extend(probs.ge(0.5).int().tolist())
+        logits = logits.detach().cpu().numpy().tolist()
 
-        # probs = F.softmax(logits, dim=-1).detach().cpu().numpy().reshape(-1)
-        # logits = logits.detach().cpu().numpy()
-        # labels = y.cpu().detach().numpy().tolist()
-        # preds = logits.argmax(-1).tolist()
-        
-        preds = logits.detach().cpu().numpy()
-        
-        return preds
+        return preds , logits
+
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay = 0.01)
-        #OneCycleLR(optimizer=optimizer, max_lr=3e-5, steps_per_epoch=912,epochs=5,pct_start=0.1)
-        # total_steps = int(912*5//2)
-        # warmup_steps = int(total_steps * 0.1)
-        #scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps= total_steps)
-        lr_scheduler = {'scheduler': OneCycleLR(optimizer=optimizer, max_lr=self.lr, steps_per_epoch=912,epochs=5,pct_start=0.1,anneal_strategy='cos'),
+        lr_scheduler = {'scheduler': OneCycleLR(optimizer=optimizer, max_lr=self.lr, steps_per_epoch=912,epochs=3,pct_start=0.1,anneal_strategy='cos'),
         'interval': 'step','frequency': 1}
+        
         return [optimizer], [lr_scheduler]
