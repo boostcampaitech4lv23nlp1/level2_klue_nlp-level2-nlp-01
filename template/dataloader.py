@@ -55,16 +55,6 @@ class Dataloader(pl.LightningDataModule):
         self.added_token_num = 0
         self.using_columns = ['subject_entity', 'object_entity', 'sentence']
 
-        self.special_tokens = [
-            '[O:ORG]', '[/O:ORG]', 
-            '[/O:POH]', '[O:NOH]', 
-            '[/O:PER]', '[O:LOC]', 
-            '[O:PER]', '[/O:LOC]', 
-            '[S:PER]', '[/S:PER]', 
-            '[O:DAT]', '[/O:DAT]', 
-            '[/O:NOH]', '[S:ORG]', 
-            '[/S:ORG]', '[O:POH]'
-        ]
         self.ner_tokens = {
             'ORG':'단체', 
             'PER':'사람', 
@@ -116,20 +106,6 @@ class Dataloader(pl.LightningDataModule):
         if self.masking is False:
             return '[SEP]'.join([item[column] for column in self.using_columns])
         else:
-            '''
-            slide_size = 0
-            # i = 0 -> subject entity
-            # i = 1 -> object entity
-            so = ['S', 'O']
-            for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
-                special_token_pair = f'[{so[i]}:{types[i]}]', f'[/{so[i]}:{types[i]}]'
-                attached = special_token_pair[0] + entity + special_token_pair[1]
-                sentence = sentence[:ids[i]+slide_size] + attached + sentence[ids[i]+len(entity)+slide_size:]
-
-                if ids[0] < ids[1]:
-                    slide_size += len(f'[{so[i]}:{types[i]}]' + f'[/{so[i]}:{types[i]}]')
-            '''
-
             slide_size = 0
             so = ['@*', '#^']
             for i, entity in enumerate([item['subject_entity'], item['object_entity']]):
