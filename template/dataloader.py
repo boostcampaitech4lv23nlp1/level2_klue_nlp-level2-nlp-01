@@ -11,9 +11,9 @@ import torchmetrics
 import pandas as pd
 import transformers
 from tqdm.auto import tqdm
+
 import pytorch_lightning as pl
 import pickle as pkl
-
 import metrics
 
 class Dataset(torch.utils.data.Dataset):
@@ -34,8 +34,9 @@ class Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.inputs)
 
+
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, masking, augmented, shuffle):
+    def __init__(self, tokenizer_name, batch_size, train_path, dev_path, test_path, predict_path, marker, augmented, shuffle):
         super().__init__()
         self.tokenizer_name = tokenizer_name
         self.batch_size = batch_size
@@ -50,23 +51,13 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
-        self.masking: bool = masking
+        self.marker: bool = marker
         self.augmented: bool = augmented
         self.shuffle: bool = shuffle
 
         self.added_token_num = 0
         self.using_columns = ['subject_entity', 'object_entity', 'sentence']
 
-        self.special_tokens = [
-            '[O:ORG]', '[/O:ORG]', 
-            '[/O:POH]', '[O:NOH]', 
-            '[/O:PER]', '[O:LOC]', 
-            '[O:PER]', '[/O:LOC]', 
-            '[S:PER]', '[/S:PER]', 
-            '[O:DAT]', '[/O:DAT]', 
-            '[/O:NOH]', '[S:ORG]', 
-            '[/S:ORG]', '[O:POH]'
-        ]
         self.ner_tokens = {
             'ORG':'단체', 
             'PER':'사람', 
@@ -80,7 +71,8 @@ class Dataloader(pl.LightningDataModule):
             pretrained_model_name_or_path=self.tokenizer_name,
         )
         
-        # if self.masking is True:
+        # special tokens 추가 시 사용
+        # if self.marker is True:
         #     self.added_token_num += self.tokenizer.add_special_tokens({
         #         'additional_special_tokens': self.special_tokens
         #     })
@@ -115,12 +107,9 @@ class Dataloader(pl.LightningDataModule):
         ids = item['ids']
         types = item['types']
 
-        if self.masking is False:
+        if self.marker is False:
             return '[SEP]'.join([item[column] for column in self.using_columns]), None
-        else:
-            # i = 0 -> subject entity
-            # i = 1 -> object entity
-            
+        else:            
             slide_size = 0
             so = ['@*', '#^']
             attaches = []
@@ -133,22 +122,6 @@ class Dataloader(pl.LightningDataModule):
                 if ids[0] < ids[1]:
                     slide_size += len(f'{so[i]}{self.ner_tokens[types[i]]}{so[i][1]}' + f'{so[i][0]}')
         return sentence, attaches
-    
-    def add_entity_embeddings(self, outputs):
-        entity_embeddings = []
-        flag = 0
-        
-        # 32001 ~ 
-        for token_idx in outputs['input_ids']:
-            entity_embeddings.append(flag)
-            if self.tokenizer.decode(token_idx) in self.special_tokens:
-                if flag == 0:
-                    flag = 1
-                else: 
-                    flag = 0
-                    entity_embeddings[-1] = flag
-        outputs['token_type_ids'] += entity_embeddings
-        return outputs
     
     def add_aeda_sentence(self, sentence: str, ratio=0.1) -> str:
         '''

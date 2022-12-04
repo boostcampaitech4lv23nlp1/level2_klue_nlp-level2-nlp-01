@@ -18,9 +18,8 @@ from dataloader import *
 from models import *
 
 
-
 if __name__ == '__main__':
-    # cuda debugging
+    # cuda 디버깅
     # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -31,8 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
-
-    parser.add_argument('--masking', default=True, type=bool)
+    parser.add_argument('--marker', default=True, type=bool)
     parser.add_argument('--augmented', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
     parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
@@ -42,15 +40,6 @@ if __name__ == '__main__':
     parser.add_argument('--test_path', default='../dataset/train/val_split.csv')
     parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
-    
-    try:
-        wandb.login(key='4c0a01eaa2bd589d64c5297c5bc806182d126350')
-    except:
-        anony = "must"
-        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
-
-    wandb.init(project="level2", name= "10. baseline + entity_marker punct(query) + aeda + mean_pooling")
-    wandb_logger = WandbLogger('level2')
 
     dataloader = Dataloader(
         args.tokenizer_name,
@@ -59,7 +48,7 @@ if __name__ == '__main__':
         args.dev_path,
         args.test_path,
         args.predict_path,
-        args.masking,
+        args.marker,
         args.augmented,
         shuffle=True
     )
@@ -71,7 +60,7 @@ if __name__ == '__main__':
         args.criterion
     )
 
-    # tracking special tokens(entity marker 쓸 때만 사용)
+    # tracking special tokens (entity marker 쓸 때만 사용)
     # if dataloader.added_token_num > 0:
     #     model.model.resize_token_embeddings(
     #         dataloader.tokenizer.vocab_size + dataloader.added_token_num
@@ -92,12 +81,8 @@ if __name__ == '__main__':
         log_every_n_steps=1,
         num_sanity_val_steps=0,
         callbacks=[checkpoint_callback],
-        logger=wandb_logger
     )
 
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
-    
-    # model_name = re.sub(r'[/]', '-', args.model_name)
-    # torch.save(model, f'/opt/models/{model_name}.pt')

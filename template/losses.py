@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-
 class FocalLoss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2, logits=False, reduce=True):
         super(FocalLoss, self).__init__()
@@ -16,6 +15,7 @@ class FocalLoss(nn.Module):
         self.reduce = reduce
 
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
+
 
     # reference : https://discuss.pytorch.org/t/focal-loss-for-imbalanced-multi-class-classification-in-pytorch/61289
     def forward(self, inputs, targets):
