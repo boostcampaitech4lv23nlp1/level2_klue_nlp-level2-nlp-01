@@ -133,15 +133,5 @@ class Model(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
-        lr_scheduler = {
-            'scheduler': OneCycleLR(
-                optimizer=optimizer,
-                max_lr=1e-5,
-                steps_per_epoch=912,
-                epochs=5,
-                pct_start=0.1
-            ),
-            'interval': 'step',
-            'frequency': 1
-        }
-        return [optimizer], [lr_scheduler]
+    
+        return optimizer
