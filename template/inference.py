@@ -23,9 +23,7 @@ def weights_update(model, checkpoint):
     return model
 
 if __name__ == '__main__':
-    # 하이퍼 파라미터 등 각종 설정값을 입력받습니다
     # 터미널 실행 예시 : python3 run.py --batch_size=64 ...
-    # 실행 시 '--batch_size=64' 같은 인자를 입력하지 않으면 default 값이 기본으로 실행됩니다
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
@@ -36,8 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('--masking', default=True, type=bool)
     parser.add_argument('--augmented', default=True, type=bool)
     parser.add_argument('--pooling', default=True, type=bool)
-    parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
-
+    parser.add_argument('--criterion', default='cross_entropy', type=str, help='cross_entropy, focal_loss')
+    
     parser.add_argument('--train_path', default='../dataset/train/new_train_split.csv')
     parser.add_argument('--dev_path', default='../dataset/train/new_val_split.csv')
     parser.add_argument('--test_path', default='../dataset/train/new_val_split.csv')
@@ -56,10 +54,7 @@ if __name__ == '__main__':
         shuffle=False
     )
 
-    # model_name = re.sub(r'[/]', '-', args.model_name)
     checkpoint_path = '/opt/models/' + 'roberta-large+epoch=4+val_micro_f1=94.512.ckpt'
-    
-    # model = torch.load(f'/opt/models/{model_name}.pt')
     main_model = Model(
         args.model_name, 
         args.learning_rate,
@@ -67,10 +62,7 @@ if __name__ == '__main__':
         args.criterion
     )
 
-    # main_model.model.resize_token_embeddings(
-    #         dataloader.tokenizer.vocab_size + dataloader.added_token_num
-    # )
-
+    # model = torch.load(f'/opt/models/{model_name}.pt')
     main_model = weights_update(
         main_model, 
         torch.load(checkpoint_path)
