@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     
-    parser.add_argument('--masking', default=True, type=bool)
+    parser.add_argument('--marker', default=True, type=bool)
     parser.add_argument('--pooling', default=False, type=bool)
     parser.add_argument('--criterion', default='cross_entropy', type=str)  # cross_entropy, focal_loss
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         args.dev_path,
         args.test_path,
         args.predict_path,
-        args.masking,
+        args.marker,
         shuffle=True
     )
 
