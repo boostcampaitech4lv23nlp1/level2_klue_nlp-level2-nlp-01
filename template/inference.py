@@ -11,9 +11,9 @@ import torchmetrics
 import pytorch_lightning as pl
 
 import matplotlib.pyplot as plt
-
 from dataloader import *
-
+import wandb
+from pytorch_lightning.loggers import WandbLogger
 
 if __name__ == '__main__':
     # 하이퍼 파라미터 등 각종 설정값을 입력받습니다
@@ -22,14 +22,25 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
-    parser.add_argument('--batch_size', default=1, type=int)
-    parser.add_argument('--max_epoch', default=1, type=int)
-    parser.add_argument('--learning_rate', default=1e-5, type=float)
-    parser.add_argument('--train_path', default='/opt/ml/dataset/train/new_train_split.csv')
-    parser.add_argument('--dev_path', default='/opt/ml/dataset/train/new_val_split.csv')
-    parser.add_argument('--test_path', default='/opt/ml/dataset/train/new_val_split.csv')
-    parser.add_argument('--predict_path', default='/opt/ml/dataset/test/test_data.csv')
+
+    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--max_epoch', default=5, type=int)
+    parser.add_argument('--learning_rate', default=3e-5, type=float)
+    parser.add_argument('--train_path', default='/opt/ml/project2/level2_klue_nlp-level2-nlp-01/dataset/back_translation/cha_train.csv')
+    parser.add_argument('--dev_path', default='/opt/ml/project2/level2_klue_nlp-level2-nlp-01/dataset/back_translation/cha_val.csv')
+    parser.add_argument('--test_path', default='/opt/ml/project2/level2_klue_nlp-level2-nlp-01/dataset/back_translation/cha_val.csv')
+    parser.add_argument('--predict_path', default='/opt/ml/project2/level2_klue_nlp-level2-nlp-01/dataset/test/removed_paren_test_data.csv')
     args = parser.parse_args(args=[])
+
+    try:
+        wandb.login(key='1f2c61c98244a7284f6726d8db5d111bca8111fa')
+    except:
+        anony = "must"
+        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
+
+
+    wandb.init(project="inference", name= f"{args.model_name}")
+    wandb_logger = WandbLogger('inference')
 
     dataloader = Dataloader(
         args.tokenizer_name,
@@ -46,17 +57,14 @@ if __name__ == '__main__':
         devices=1,
         precision=16,
         max_epochs=args.max_epoch, 
-        log_every_n_steps=1
+        log_every_n_steps=1,
+        logger = wandb_logger
     )
 
     model_name = re.sub(r'[/]', '-', args.model_name)
-    model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/template/models/roberta-large+epoch=1+val_micro_f1=87.629.ckpt')
-    
-    # model = torch.load(f'{model_name}.pt')
-
-
+    model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/template/models/roberta_large(cha_back_trans)+epoch=4+val_micro_f1=91.992.ckpt')
     results = trainer.predict(model=model, datamodule=dataloader)
-    
+
     preds_all, probs_all = [], []
     for preds, probs in results:
         preds_all.append(preds[0]); probs_all.append(str(list(probs)))
@@ -69,4 +77,4 @@ if __name__ == '__main__':
         'probs': probs_all
     })
 
-    output.to_csv('output.csv', index=False)
+    output.to_csv('/opt/ml/dataset/for_ensemble/output_cha.csv', index=False)

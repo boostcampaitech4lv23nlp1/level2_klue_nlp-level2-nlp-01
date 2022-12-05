@@ -140,15 +140,18 @@ class Dataloader(pl.LightningDataModule):
 
         
         for sub,obj,sent in zip(df['subject_entity'], df['object_entity'], df['sentence']):
-            sub_word = sub[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
-            obj_word = obj[1:-1].split("':")[1].replace("'", '').split(',')[0].strip()
+            sub = eval(sub)
+            obj = eval(obj)
+            ss=sub['start_idx']
+            se=sub['end_idx']
+            os=obj['start_idx']
+            oe=obj['end_idx']
 
-            ss = int(sub.split("':")[2].split(',')[0].strip())   # subject_start
-            se = int(sub.split("':")[3].split(',')[0].strip())   # sub_end
-            os = int(obj.split("':")[2].split(',')[0].strip())   # obj_start
-            oe = int(obj.split("':")[3].split(',')[0].strip())   # obj_end
-            sub_type = sub[1:-1].split("':")[4].replace("'", '').strip() # sub_ner
-            obj_type = obj[1:-1].split("':")[4].replace("'", '').strip() #obj_ner
+            sub_word=sub['word']
+            obj_word=obj['word']
+
+            sub_type =sub['type']
+            obj_type =obj['type']
 
             prepro_sent = self.add_entity_marker_punct(sent, sub_word, obj_word, sub_type, obj_type, ss, se, os, oe)
             
@@ -169,7 +172,6 @@ class Dataloader(pl.LightningDataModule):
 
                 'label': df['label'],
             })
-            
             inputs = self.tokenizing(preprocessed_df)
             targets = self.label_to_num(preprocessed_df['label'])
         except:
@@ -220,4 +222,4 @@ class Dataloader(pl.LightningDataModule):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
 
     def predict_dataloader(self):
-        return torch.utils.data.DataLoader(self.predict_dataset, batch_size=self.batch_size)
+        return torch.utils.data.DataLoader(self.predict_dataset, batch_size=1)

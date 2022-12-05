@@ -40,5 +40,4 @@ def klue_re_auprc(probs, labels):
     return np.average(score) * 100.0
 
 def re_accuracy_score(probs, labels):
-
     return accuracy_score(probs, labels)
