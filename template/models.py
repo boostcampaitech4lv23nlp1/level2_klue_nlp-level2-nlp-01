@@ -37,17 +37,11 @@ class Model(pl.LightningModule):
         self.model = transformers.AutoModel.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
         )
-        # self.classifier = torch.nn.Sequential(
-        #     torch.nn.Linear(1024,1024),
-        #     torch.nn.Dropout(p=0.1),
-        #     torch.nn.Linear(1024,30)
-        # )
         self.classification = torch.nn.Linear(1024, 30)
 
         #self.criterion = torch.nn.CrossEntropyLoss()
         #self.criterion = losses.FocalLoss()
         
-
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:
         token_embeddings = model_output['last_hidden_state']        #First element of model_output contains all token embeddings
@@ -74,8 +68,6 @@ class Model(pl.LightningModule):
         ce_loss_w_soft_label = (1-self.epsilon) * ce_loss + self.epsilon / K * (avg_log_probs)
         return ce_loss_w_soft_label
         
-
-
     def training_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
@@ -153,10 +145,14 @@ class Model(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay = 0.01)
-        #OneCycleLR(optimizer=optimizer, max_lr=3e-5, steps_per_epoch=912,epochs=5,pct_start=0.1)
+        # OneCycleLR(optimizer=optimizer, max_lr=3e-5, steps_per_epoch=912,epochs=5,pct_start=0.1)
         total_steps = int(912*5//2)
         warmup_steps = int(total_steps * 0.1)
         #scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps= total_steps)
-        lr_scheduler = {'scheduler': OneCycleLR(optimizer=optimizer, max_lr=3e-5, steps_per_epoch=912,epochs=5,pct_start=0.1),
-        'interval': 'step','frequency': 1}
+        lr_scheduler = {
+                'scheduler': OneCycleLR(optimizer=optimizer, max_lr=3e-5, steps_per_epoch=912,epochs=5,pct_start=0.1),
+                'interval': 'step',
+                'frequency': 1
+        }
         return [optimizer], [lr_scheduler]
+

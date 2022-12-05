@@ -11,7 +11,6 @@ import torchmetrics
 import pytorch_lightning as pl
 
 import matplotlib.pyplot as plt
-
 from dataloader import *
 import wandb
 from pytorch_lightning.loggers import WandbLogger
@@ -23,6 +22,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
+
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--learning_rate', default=3e-5, type=float)
@@ -63,10 +63,6 @@ if __name__ == '__main__':
 
     model_name = re.sub(r'[/]', '-', args.model_name)
     model = Model.load_from_checkpoint(checkpoint_path='/opt/ml/template/models/roberta_large(cha_back_trans)+epoch=4+val_micro_f1=91.992.ckpt')
-    
-    # model = torch.load(f'{model_name}.pt')
-
-
     results = trainer.predict(model=model, datamodule=dataloader)
 
     preds_all, probs_all = [], []
