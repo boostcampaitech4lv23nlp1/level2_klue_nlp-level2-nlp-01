@@ -34,24 +34,13 @@ class FCLayer(nn.Module):
         return self.linear(x)
 
 class Model(pl.LightningModule):
-<<<<<<< HEAD:r-bert/models.py
     def __init__(self, model_name:str, lr: float, pooling: bool, criterion: str) -> None:
-=======
-
-    def __init__(self, model_name:str, lr: float) -> None:
-
->>>>>>> a76cebdf05df928f633155c32e05fb5c909ba707:template/models.py
         super().__init__()
         self.save_hyperparameters()
 
         self.model_name = model_name
         self.lr = lr
-<<<<<<< HEAD:r-bert/models.py
         self.pooling = pooling
-=======
-
-        self.pooling = 1
->>>>>>> a76cebdf05df928f633155c32e05fb5c909ba707:template/models.py
         self.epsilon = 0.1
 
         self.labels_all = []
@@ -61,7 +50,6 @@ class Model(pl.LightningModule):
         self.model = transformers.AutoModel.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
         )
-<<<<<<< HEAD:r-bert/models.py
 
         self.entity_fc_layer = FCLayer(input_dim = 1024, output_dim = 1024, dropout_rate = 0.1)
 
@@ -71,17 +59,6 @@ class Model(pl.LightningModule):
 
         self.classification_for_rbert = torch.nn.Linear(1024*3, 30)
         self.criterion = torch.nn.CrossEntropyLoss()
-=======
-        # self.classifier = torch.nn.Sequential(
-        #     torch.nn.Linear(1024,1024),
-        #     torch.nn.Dropout(p=0.1),
-        #     torch.nn.Linear(1024,30)
-        # )
-        self.classification = torch.nn.Linear(1024, 30)
-
-        #self.criterion = torch.nn.CrossEntropyLoss()
-        #self.criterion = losses.FocalLoss()
->>>>>>> a76cebdf05df928f633155c32e05fb5c909ba707:template/models.py
         
 
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
@@ -110,7 +87,6 @@ class Model(pl.LightningModule):
 
 
     def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
-<<<<<<< HEAD:r-bert/models.py
 
         inputs = {
             'input_ids' : x['input_ids'],
@@ -126,15 +102,11 @@ class Model(pl.LightningModule):
 
         entity_s_h = self.entity_average(hidden_output, e_mask_s) # torch.Size([16, 1024])
         entity_o_h = self.entity_average(hidden_output, e_mask_o) # torch.Size([16, 1024])
-=======
-        model_outputs = self.model(**x)    #model_outputs -> (32,256,1024)
->>>>>>> a76cebdf05df928f633155c32e05fb5c909ba707:template/models.py
         
         if self.pooling is True:
             sentence_out = self.mean_pooling(model_outputs, x['attention_mask']) # torch.Size([16, 1024])
             
         else:
-<<<<<<< HEAD:r-bert/models.py
             sentence_out = model_outputs['last_hidden_state'][:, 0, :] # [CLS] torch.Size([16, 1024])
 
         entity_s_out = self.entity_fc_layer(entity_s_h)
@@ -149,25 +121,11 @@ class Model(pl.LightningModule):
     
     def CrossEntropywithLabelSmoothing(self,pred,target):
         K = pred.size(-1) 
-=======
-            out = model_outputs['last_hidden_state'][:, 0, :] #(32,1,1024)
-        out = self.classification(out)
-        #out = self.classifier(out)    #(32,1,30)
-        return out.view(-1,30)
-    
-    def CrossEntropywithLabelSmoothing(self,pred,target):
-        K = pred.size(-1) # 전체 클래스의 갯수
->>>>>>> a76cebdf05df928f633155c32e05fb5c909ba707:template/models.py
         log_probs = F.log_softmax(pred, dim=-1)
         avg_log_probs = (-log_probs).sum(-1).mean()
         ce_loss = F.nll_loss(log_probs, target)
         ce_loss_w_soft_label = (1-self.epsilon) * ce_loss + self.epsilon / K * (avg_log_probs)
         return ce_loss_w_soft_label
-<<<<<<< HEAD:r-bert/models.py
-=======
-        
-
->>>>>>> a76cebdf05df928f633155c32e05fb5c909ba707:template/models.py
 
     def training_step(self, batch, batch_idx):
         x, y = batch
