@@ -17,14 +17,8 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from dataloader import *
 from models import *
 
-# from sklearn.model_selection import cross_val_score, cross_validate
 
 if __name__ == '__main__':
-    # cuda debugging 
-    # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--tokenizer_name', default='klue/roberta-large', type=str)
     parser.add_argument('--model_name', default='klue/roberta-large', type=str)
@@ -74,7 +68,6 @@ if __name__ == '__main__':
             monitor="val_micro_f1",
             filename="{model_name}+kfold+{k}-{epoch}+{val_micro_f1:.3f}"
         )
-        # lr_monitor = LearningRateMonitor(logging_interval='step')
             
         trainer = pl.Trainer(
             accelerator='gpu',

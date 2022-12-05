@@ -37,8 +37,6 @@ class Model(pl.LightningModule):
         )
 
         self.classification = torch.nn.Linear(1024, 30)
-        # self.criterion = torch.nn.CrossEntropyLoss()
-        # self.criterion = losses.FocalLoss()
 
         assert criterion in ['cross_entropy', 'focal_loss'], "criterion not in model"
         if criterion == 'cross_entropy':
@@ -54,23 +52,26 @@ class Model(pl.LightningModule):
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
+
     def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
-        model_outputs = self.model(**x) #model_outputs -> (32,256,1024)
+        model_outputs = self.model(**x) 
         
         if self.pooling is True:
             hidden_state = self.mean_pooling(model_outputs, x['attention_mask'])
         else:
-            hidden_state = model_outputs['last_hidden_state'][:, 0, :] #(32,1,1024)
+            hidden_state = model_outputs['last_hidden_state'][:, 0, :]
         out = self.classification(hidden_state)
         return out.view(-1,30), hidden_state
 
+
     def CrossEntropywithLabelSmoothing(self,pred,target):
-        K = pred.size(-1) # 전체 클래스의 갯수
+        K = pred.size(-1) # 전체 클래스의 수
         log_probs = F.log_softmax(pred, dim=-1)
         avg_log_probs = (-log_probs).sum(-1).mean()
         ce_loss = F.nll_loss(log_probs, target)
         ce_loss_w_soft_label = (1-self.epsilon) * ce_loss + self.epsilon / K * (avg_log_probs)
         return ce_loss_w_soft_label
+
 
     def contrastive_loss(self, embedding, label, temp=0.3):
         """calculate the contrastive loss
@@ -78,11 +79,14 @@ class Model(pl.LightningModule):
         embedding = embedding.cpu().detach().numpy()
         # cosine similarity between embeddings
         cosine_sim = cosine_similarity(embedding, embedding)
+
         # remove diagonal elements from matrix
         dis = cosine_sim[~np.eye(cosine_sim.shape[0], dtype=bool)].reshape(cosine_sim.shape[0], -1)
+
         # apply temprature to elements
         dis = dis / temp
         cosine_sim = cosine_sim / temp
+
         # apply exp to elements
         dis = np.exp(dis)
         cosine_sim = np.exp(cosine_sim)
@@ -91,6 +95,7 @@ class Model(pl.LightningModule):
         row_sum = []
         for i in range(len(embedding)):
             row_sum.append(sum(dis[i]))
+
         # calculate outer sum
         contrastive_loss = 0
         for i in range(len(embedding)):
@@ -157,11 +162,11 @@ class Model(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        logits,hidden_state = self(x) # logits : 32,30
+        logits,hidden_state = self(x) 
 
         labels = y.cpu().detach().numpy().tolist()
         probs = logits.cpu().detach().numpy().tolist()
-        preds = logits.cpu().detach().numpy().argmax(-1).tolist() #(32,1)
+        preds = logits.cpu().detach().numpy().argmax(-1).tolist() 
 
         self.labels_all += labels
         self.probs_all += probs
@@ -190,7 +195,7 @@ class Model(pl.LightningModule):
         labels = y.cpu().detach().numpy().tolist()
         preds = logits.argmax(-1).tolist()
 
-        return preds, probs #labels probs
+        return preds, probs 
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)

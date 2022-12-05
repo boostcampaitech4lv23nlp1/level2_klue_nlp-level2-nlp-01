@@ -62,13 +62,10 @@ class Dataloader(pl.LightningDataModule):
         
         self.ner_type = {'ORG':'단체', 'PER':'사람', 'DAT':'날짜', 'LOC':'위치', 'POH':'기타', 'NOH':'수량'}
         self.using_columns = {'subject_entity':'', 'object_entity':''}
-        # self.entity_tokens = ['[ENTITY]', '[/ENTITY]']
+
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.tokenizer_name,
         )
-        # self.tokenizer.add_special_tokens({
-        #     'additional_special_tokens': ['[ENTITY]', '[/ENTITY]']
-        # })
 
 
     def num_to_label(self, label):
@@ -77,7 +74,9 @@ class Dataloader(pl.LightningDataModule):
             dict_num_to_label = pkl.load(f)
         for v in label:
             origin_label.append(dict_num_to_label[v])
+
         return origin_label
+
 
     def label_to_num(self, label: pd.Series) -> List[int]:
         num_label = []
@@ -98,8 +97,6 @@ class Dataloader(pl.LightningDataModule):
             subject_entity = '@*' + self.ner_type[item['subject_type']] + '*' + item['subject_entity'] + '@'
             object_entity = '#^' + self.ner_type[item['object_type']] + '^' + item['object_entity'] + '#'
             concat_entity = f'문장에서 @{obj_word}@와 #{sub_word}#건의 관계는?' # concat.v4
-            # concat_entity = subject_entity+ '[SEP]' + object_entity
-            # concat_entity = f'이 문장에서 {subject_entity}와 {object_entity}의 관계'
 
             outputs = self.tokenizer(
                 concat_entity,
@@ -111,15 +108,17 @@ class Dataloader(pl.LightningDataModule):
             )
             data.append(outputs)
         return data
+
     
     def add_entity_marker_punct(self, sentence, sub_word, obj_word, sub_type, obj_type, ss, se, os, oe):
         if ss < os:
             new_sentence = sentence[:ss] + '@'+ '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 : os] + '#' + '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 :]
         else: 
             new_sentence = sentence[:os] + '#'+ '^' + self.ner_type[obj_type] + '^' + obj_word + '#' + sentence[oe + 1 : ss] + '@' + '*' + self.ner_type[sub_type] + '*' + sub_word + '@' + sentence[se + 1 :]
-            #new_sentence = sentence[:os] + '@'+ '*' + self.ner_type[obj_type] + '*' + obj_word + '@' + sentence[oe + 1 : ss] + '#' + '^' + self.ner_type[sub_type] + '^' + sub_word + '#' + sentence[se + 1 :]
+            
     
         return new_sentence
+
     
     def preprocessing(self, df: pd.DataFrame):
         subject_entities = []
@@ -205,19 +204,17 @@ class Dataloader(pl.LightningDataModule):
             self.val_dataset = Dataset(val_inputs, val_targets)    
 
         else:
-            # test_data = pd.read_csv(self.test_path)    
             predict_data = pd.read_csv(self.predict_path)
-
-            # test_inputs, test_targets = self.preprocessing(test_data)
-            # self.test_dataset = Dataset(test_inputs, test_targets)
-            self.test_dataset = self.val_dataset
-
             predict_data.drop(columns=['label'], inplace=True)
             predict_inputs, predict_targets = self.preprocessing(predict_data)
+
+            self.test_dataset = self.val_dataset
             self.predict_dataset = Dataset(predict_inputs, predict_targets)
+
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle,num_workers=8)
+
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size,num_workers=8)
@@ -225,6 +222,7 @@ class Dataloader(pl.LightningDataModule):
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size)
+
 
     def predict_dataloader(self):
         return torch.utils.data.DataLoader(self.predict_dataset, batch_size=self.batch_size)

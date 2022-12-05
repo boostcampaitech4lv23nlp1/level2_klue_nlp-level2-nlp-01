@@ -54,7 +54,7 @@ if __name__ == '__main__':
     )
 
     use_files = []
-    PATH = '/opt/ml/template/kfolds/'  # root PATH # kfold ckpt 파일 경로 확인
+    PATH = '/opt/ml/template/kfolds/'  # kfold ckpt 파일 경로
     for idx, file_nm in enumerate(os.listdir(PATH)):
         use_files.append(PATH + file_nm)
     use_files
@@ -78,5 +78,5 @@ if __name__ == '__main__':
             'probs': probs_all
         })
 
-        output.to_csv(f'/opt/ml/template/kfold_result/kfold_output_{idx}.csv', index=False) # 저장할 경로확인
+        output.to_csv(f'/opt/ml/template/kfold_result/kfold_output_{idx}.csv', index=False) # 저장 경로
         print(f"=======================fold {idx}th DONE=======================")
