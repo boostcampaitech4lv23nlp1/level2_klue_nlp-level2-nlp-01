@@ -33,9 +33,6 @@ class Model(pl.LightningModule):
             pretrained_model_name_or_path=self.model_name,
         )
         
-        # self.blm = transformers.AutoForSequenceClassification.from_pretrained(
-        #     pretrained_model_name_or_path = self.model_name, num_labels = 1)
-        
         self.classification = torch.nn.Linear(1024,1)
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
@@ -97,10 +94,6 @@ class Model(pl.LightningModule):
         x, y = batch
 
         logits, hidden_state = self(x)
-        # print(logits)
-        # probs = torch.sigmoid(logits).squeeze(-1)
-        # print(probs)
-        # sys.exit()
     
         if self.contrastive is True:
             con_loss = self.contrastive_loss(hidden_state, y.float())
@@ -154,14 +147,6 @@ class Model(pl.LightningModule):
     def predict_step(self, batch, batch_idx):
         x, y = batch
         logits,hidden_state = self(x)
-
-        # probs = F.softmax(logits, dim=-1).detach().cpu().numpy().reshape(-1)
-        # logits = logits.detach().cpu().numpy()
-        # labels = y.cpu().detach().numpy().tolist()
-        # preds = logits.argmax(-1).tolist()
-        
-        # preds = logits.detach().cpu().numpy()
-
         probs = torch.sigmoid(logits).squeeze(-1)
         final_preds = []
         final_preds.extend(probs.ge(0.5).int().tolist())
@@ -170,10 +155,6 @@ class Model(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay = 0.01)
-        #OneCycleLR(optimizer=optimizer, max_lr=3e-5, steps_per_epoch=912,epochs=5,pct_start=0.1)
-        # total_steps = int(912*5//2)
-        # warmup_steps = int(total_steps * 0.1)
-        #scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps= total_steps)
         lr_scheduler = {'scheduler': OneCycleLR(optimizer=optimizer, max_lr=self.lr, steps_per_epoch=912,epochs=5,pct_start=0.1,anneal_strategy='cos'),
         'interval': 'step','frequency': 1}
         return [optimizer], [lr_scheduler]

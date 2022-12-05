@@ -99,7 +99,6 @@ if __name__ == '__main__':
         cm[preds[0]][probs[0]] += 1
         y_predicted.append(preds[0]); y_true.append(probs[0])
     cm = cm.astype('int')
-    # y_predicted = dataloader.num_to_label(preds_all)
 
     label = ['no_relation', 'org:top_members/employees', 'org:members',
        'org:product', 'per:title', 'org:alternate_names',

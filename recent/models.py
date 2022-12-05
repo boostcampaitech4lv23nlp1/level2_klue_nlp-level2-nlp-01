@@ -34,15 +34,8 @@ class Model(pl.LightningModule):
         self.model = transformers.AutoModel.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
         )
-        # self.classifier = torch.nn.Sequential(
-        #     torch.nn.Linear(1024,1024),
-        #     torch.nn.Dropout(p=0.1),
-        #     torch.nn.Linear(1024,30)
-        #)
-        # self.classification = torch.nn.Linear(1024, 30)
         self.classification = torch.nn.Linear(1024, 29)
         self.criterion = torch.nn.CrossEntropyLoss()
-        #self.criterion = losses.FocalLoss()
         
     # reference : https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
     def mean_pooling(self, model_output: Dict[str, torch.Tensor], attention_mask: torch.Tensor) -> torch.Tensor:

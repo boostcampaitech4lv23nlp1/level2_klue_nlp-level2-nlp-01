@@ -28,15 +28,16 @@ if __name__ == '__main__':
     parser.add_argument('--test_path', default='../dataset/train/binary_val.csv')
     parser.add_argument('--predict_path', default='../dataset/test/test_data.csv')
     args = parser.parse_args(args=[])
-    
-    # try:
-    #     wandb.login(key='3e00a171508ab88512c57afafb441f5ee2b4864b')
-    # except:
-    #     anony = "must"
-    #     print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
 
-    # wandb.init(project="level2-typed-entity-marker-punct-binary", name= f"{args.model_name}_binary")
-    # wandb_logger = WandbLogger('level2-typed entity marker binary')
+    try:
+        wandb.login(key='YOUR WANDB KEY')
+    except:
+        anony = "must"
+        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
+
+    wandb.init(project="level2", name= f"{args.model_name}-recent-multiple")
+    wandb_logger = WandbLogger('level2')
+    
 
     dataloader = Dataloader(args.tokenizer_name,
                             args.batch_size,
@@ -47,22 +48,18 @@ if __name__ == '__main__':
                             shuffle=True)
     
     model = Model(args.model_name, args.learning_rate)
-    # checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/template/models/",save_top_k=2, monitor="val_micro_f1",filename="roberta-large+{epoch}+{val_micro_f1:.3f}",mode='max')
+    checkpoint_callback = ModelCheckpoint(dirpath="/opt/ml/models/recent/multiple", save_top_k=2, monitor="val_micro_f1", mode="max", filename="recent+{epoch}+{val_micro_f1:.3f}")
     lr_monitor = LearningRateMonitor(logging_interval='step')
+
+    
     trainer = pl.Trainer(accelerator = 'gpu',
                         devices = 1,
                         max_epochs=args.max_epoch, 
                         log_every_n_steps=1,
                         precision=16,
-                        # logger = wandb_logger,
-                        callbacks=[lr_monitor]
+                        callbacks=[checkpoint_callback, lr_monitor]
                         )
 
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
-    
-
-    # model_name = re.sub(r'[/]', '-', args.model_name)
-
-    # torch.save(model, f'{model_name}.pt')

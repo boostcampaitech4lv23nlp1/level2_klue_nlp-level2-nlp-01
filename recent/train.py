@@ -32,7 +32,7 @@ if __name__ == '__main__':
     args = parser.parse_args(args=[])
     
     try:
-        wandb.login(key='4144d847761a14e5160041ccffc9eb7105a788dc')
+        wandb.login(key='YOUR WANDB KEY')
     except:
         anony = "must"
         print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
@@ -47,8 +47,6 @@ if __name__ == '__main__':
                             args.test_path,
                             args.predict_path,
                             shuffle=True)
-
-    print(dataloader)
     
     model = Model(args.model_name, args.learning_rate)
 
@@ -67,8 +65,3 @@ if __name__ == '__main__':
     # Train part
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)
-    
-
-    # model_name = re.sub(r'[/]', '-', args.model_name)
-
-    # torch.save(model, f'{model_name}.pt')
