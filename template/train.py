@@ -47,7 +47,7 @@ if __name__ == '__main__':
                             args.test_path,
                             args.predict_path,
                             shuffle=True)
-        model = Model(args.model_name, args.learning_rate)
+    model = Model(args.model_name, args.learning_rate)
 
     checkpoint_callback = ModelCheckpoint(mode="max", dirpath="/opt/ml/template/models/",save_top_k=2, monitor="val_micro_f1",filename="roberta_large(마지막)+{epoch}+{val_micro_f1:.3f}")
 
