@@ -15,7 +15,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import losses
 import metrics
-from dataloader import *
 
 class Model(pl.LightningModule):
     def __init__(self, model_name:str, lr: float, pooling: bool, criterion: str) -> None:
