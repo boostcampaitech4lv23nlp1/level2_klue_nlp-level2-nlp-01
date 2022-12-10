@@ -1,4 +1,3 @@
-import re
 import os
 import argparse
 from models import Model
@@ -10,9 +9,7 @@ import transformers
 import torchmetrics
 import pytorch_lightning as pl
 
-import matplotlib.pyplot as plt
-
-from dataloader import *
+from dataloader import Dataloader
 
 
 if __name__ == '__main__':
