@@ -1,10 +1,4 @@
-import os
-import re
-import argparse
 import ast
-
-from typing import *
-import json
 import torch
 import torchmetrics
 import pandas as pd
@@ -13,8 +7,7 @@ from tqdm.auto import tqdm
 import pytorch_lightning as pl
 import pickle as pkl
 
-import metrics
-
+from typing import List
 from sklearn.model_selection import StratifiedKFold
 
 class Dataset(torch.utils.data.Dataset):
@@ -183,7 +176,7 @@ class Dataloader(pl.LightningDataModule):
             train_data = pd.read_csv(self.train_path)
             val_data = pd.read_csv(self.dev_path)
 
-        ####################### << K-Fold >> #######################
+            ####################### << K-Fold >> #######################
             total_data = pd.concat([train_data, val_data])
             total_data.set_index('Unnamed: 0', inplace=True)
             data_label = total_data['label']
@@ -195,7 +188,7 @@ class Dataloader(pl.LightningDataModule):
             
             train_data = total_data[total_data['fold'] != self.k]
             val_data = total_data[total_data['fold'] == self.k]
-        ###############################################################
+            ###############################################################
 
             train_inputs, train_targets = self.preprocessing(train_data)
             val_inputs, val_targets = self.preprocessing(val_data)
