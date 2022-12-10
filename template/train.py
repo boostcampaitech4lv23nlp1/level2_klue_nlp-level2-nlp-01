@@ -14,8 +14,8 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
 
-from dataloader import *
-from models import *
+from dataloader import Dataloader
+from models import Model
 
 
 if __name__ == '__main__':
