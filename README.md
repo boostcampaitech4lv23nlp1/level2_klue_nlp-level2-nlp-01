@@ -16,10 +16,10 @@
 |이름|id|역할|
 |:--:|:--:|--|
 |이용우|[@wooy0ng](https://github.com/wooy0ng)|**PM** (협업 리딩, 역할 지원)|
-|권현정|[@malinmalin2](https://github.com/malinmalin2)|**데이터 분석** (데이터 전처리 및 증강)|
-|강혜빈|[@hyeb](https://github.com/hyeb)|**코더** (Model Architecture 설계 및 개선)
-|백인진|[@eenzeenee](https://github.com/eenzeenee)|**코더** (Model Architecture 설계 및 개선)|
-|이준원|[@jun9603](https://github.com/jun9603)|**코더** (Model Architecture 설계 및 개선)
+|권현정|[@malinmalin2](https://github.com/malinmalin2)|**Data** (데이터 전처리 및 증강)|
+|강혜빈|[@hyeb](https://github.com/hyeb)|**Code reviewer** (Model Architecture 설계 및 개선)
+|백인진|[@eenzeenee](https://github.com/eenzeenee)|**Code reviewer** (Model Architecture 설계 및 개선)|
+|이준원|[@jun9603](https://github.com/jun9603)|**Code reviewer** (Model Architecture 설계 및 개선)
 
 
 <br><br><br>
