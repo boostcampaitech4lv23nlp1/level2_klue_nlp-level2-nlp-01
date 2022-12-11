@@ -1,6 +1,5 @@
 # **Naver Boostcamp AI Tech level 2 NLP 1조**
 <br><br><br>
-
 ## **[NLP] 문장 내 게체간 관계 추출**
 
 관계 추출은 문장의 단어에 대한 속성과 관계를 예측하여
@@ -12,7 +11,6 @@
 다양한 자연어 처리 응용 연구 분야에서 중요하게 역할할 수 있습니다.
 
 <br><br><br>
-
 ## **Contributors**
 
 |이름|id|역할|
@@ -25,7 +23,6 @@
 
 
 <br><br><br>
-
 
 ## **Data**
 
@@ -40,7 +37,6 @@
 
 
 <br><br><br>
-
 
 ## **Experiments**
 
